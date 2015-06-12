@@ -1,0 +1,58 @@
+"Donut" code for aberration measurement from defocused images 
+
+A.Tokovinin, April 29, 2005
+
+--------------------------------------------------------------
+
+Readme		This file
+
+don11.pro	Main code
+donut.common	Common block used in the main code
+xd2.pro		GUI interface
+ztools.pro	Zernike toolbox
+readfits.pro	Auxiliary program from "astro" package
+make.pro	"make-file"
+
+donut.par	Example parameter file
+focus.fits      Example image
+
+----------------------------------------------------------------
+
+Usage:
+
+1. Edit the parameter file under suitable name, e.g. mypar.par
+
+2. Compile the code under IDL: IDL>@make
+
+3. Launch the GUI: IDL> xd, pfile='mypar.par'
+
+In the GUI:
+
+i) Load the image file <File>
+ii) Select suitable star <Extract>
+iii) Toggle the extra/intrafocal button depending on which side of the
+focus the image was taken
+iv) Fit the model <Fit> 
+v) Save the Zernike coefficients <Save results>
+
+Additional functionalities:
+
+- Edit parameters: parameter editor. 
+
+- Fit again: continue fitting, possibly with different number of terms
+
+- Save static (ASCII file with Zernike high-order aberrations to
+initialize the model)
+
+- Save image: creates fit.ps with the picture of the image and model.
+
+--------------------------------------------------------------------
+
+WARNING: the code is not foolproof! Quite frequently, you will get an
+error message of the kind:
+
+% XMANAGER: Caught unexpected error from client application. Message follows...
+
+Try to figure out what went wrong, close the GUI and start again!
+
+----------------- end ---------------------------------------------
