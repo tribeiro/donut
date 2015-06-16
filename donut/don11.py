@@ -39,6 +39,8 @@ class Donut():
             k = key.keys()[0]
             self.__dict__[k.lower()] = key[k]
 
+        self.data_struct = data
+
     def init(self):
         '''
         ; Pre-compute the parameters and save them in the COMMOM block
@@ -227,7 +229,7 @@ class Donut():
         impixmax = np.max(impix)
 
         xi = np.zeros(nzer)
-        for j= np.arange(1,nzer):
+        for j in np.arange(1,nzer):
             xi[j] = self.alambda/(2.*np.pi)*0.5/((np.sqrt(8.*(j+1.)-6.)-1.)/2.)
         xi[0] = 0.1
         indonut = impixnorm[impixnorm > impixmax*self.thresh]
@@ -247,6 +249,7 @@ class Donut():
             model = self.getimage(z0)
             im0 = model[indonut]
             chi2 = np.sqrt(np.sum((im0 - im)**2.)/chi2norm )
+            invmat = np.zeros((n,nzer))
             print 'Cycle: ',k+1, '  RMS= ',chi2*100, ' percent'
             print 'um ', z0[0:nzer-1]
 
@@ -270,35 +273,142 @@ class Donut():
             if (k%2 == 0):
                 imat = np.zeros((n,nzer))
                 print 'Computing the interaction matrix...'
-                for j in np.range(nzer):
+                for j in np.arange(nzer):
                     imat[j] =  ((self.newimage(xi[j],j+1))[indonut] - im0)/xi[j]
-                ztools.svd_invert(tmat, tmp, thresh)
-    invmat = tmp # transpose(imat)
-  endif
+                tmat = np.dot(imat.T, imat)
+                tmp = ztools.svd_invert(tmat, thresh)
+                invmat = np.dot(tmp, imat.T)
 
-  dif = im - im0
-;  dif = (im - im0)/sig
-  dz = invmat # dif
-  z0[0:nzer-1] += 0.7*dz
-;  z0[0:nzer-1] += dz
-  z0[0] = z0[0] > 0.2
-  z0[0] = z0[0] < 1.5
+            dif = im - im0
+            dz = invmat # dif
+            z0[0:nzer-1] += 0.7*dz
 
-  d1 = min(dif) & d2 = max(dif)
-  ; display the image (left: input, right: model)
-  tmp = fltarr(512,256)
-  tmp(0:255,*) = congrid(impix, 256,256)
-  tmp(256:511,*) = congrid(model, 256,256 )
-;  tmp(256:511,*) = congrid((impix-model-d1)/(d2-d1)*impixmax, 256,256 )
-;  tmp(256:511,*) = congrid((impix-model+0.5*impixmax), 256,256 )
-  tvscl, tmp
-;  stop
+            z0[0] = np.max([z0[0], 0.2])
+            z0[0] = np.min([z0[0], 1.5])
 
-endfor
+            d1 = np.min(dif)
+            d2 = np.max(dif)
+            #display the image (left: input, right: model)
+            self.displ(np.append(impix,model,axis=-1))
 
-;  zres = z0[0:nzer-1] ; Do not truncate to permit further fitting
+        print 'Fitting done!'
+        return chi2, model
 
-print, 'Fitting done!'
+    #-------------------------------------------------------
 
-end
-;-------------------------------------------------------
+    def fit(self,impix, efoc):
+        '''
+        preliminary and final fitting
+        :param impix:
+        :param immod:
+        :param zres:
+        :param efoc:
+        :param chi2:
+        :return:
+        '''
+
+        zres = self.getmom(impix)
+
+        nzer = self.nzer
+        #if (self.static != ''):
+        z0 = self.readz(self.static)# else z0 = fltarr(nzer)
+
+        z0[0:5] = self.zres
+        if (efoc < 0):
+            z0[3:5] *= -1.
+        self.zres = z0
+
+        chi2, immod = self.find(impix, zres, nzer)
+
+        return chi2,immod
+
+    def writepar(self,filename):
+        '''
+        Write parameters into a file
+        :param filename:
+        :return:
+        '''
+
+        data = self.data_struct
+
+        for key in data['donpar']:
+            k = key.keys()[0]
+            data[k] = self.__dict__[k.lower()]
+
+        print 'Parameters are saved in ',filename
+
+    def savez(self, z, filename):
+        '''
+        ; Save Zernike vector in ASCII file
+        :param z:
+        :param filename:
+        :return:
+        '''
+
+        np.savetxt(filename,fmt='%8.3f',X=z)
+        print 'Zernike vector is saved in ',filename
+
+
+    def readz(self):
+
+        if self.static != '':
+            return np.loadtxt(self.static)
+        else:
+            return np.zeros(self.nzer)
+
+    def saveres(self, resfile, z, chi2, imfile):
+
+        with open(resfile) as fp:
+            fmt_str = '%20s %6i %6i %10.3e %8.4f'+len(z)*' %8.3f'
+            tuple_res = tuple(imfile, self.xc, self.yc, flux, chi2)+tuple(z)
+            fp.write(fmt_str%tuple_res)
+
+        fp.close()
+        print 'Results are saved!'
+
+    def extract(self,img, xc, yc, nccd):
+
+        ix1 = np.max([xc-nccd,0])
+        ix2 = np.min([xc+nccd, len(img)-1])
+        iy1 = np.max([yc-nccd,0])
+        iy2 = np.min([yc+nccd, len(img)-1])
+
+        img1 = img[ix1:ix2,iy1:iy2] # cut out the required part
+
+        img1 = img1 - np.min(img1)  # subtract background
+        itot = sum(img1)
+
+        # find the center-of-gravity
+        nx = img1.shape[0]
+        ny = img1.shape[1]
+
+        xx = (np.arange(nx)-nx/2)#replicate(1,ny)
+        ix = np.sum(img1*xx)/itot + 2
+
+        yy = np.array(nx,copy=True) # (findgen(ny)-ny/2)
+        iy = np.sum(img1*yy)/itot +2
+
+        ix = np.array(np.floor(ix),dtype=np.int)+ nx/2
+        iy = np.array(np.floor(iy),dtype=np.int)+ ny/2
+
+        ix1 = np.max([ix-nccd/2 ,0])
+        ix2 = np.min([ix1+nccd, nx-1])
+
+        iy1 = np.max([iy-nccd/2 ,0])
+        iy2 = np.min([iy1+nccd , ny-1])
+
+        if (ix2-ix1 < nccd-1) or (iy2-iy1 < nccd-1):
+            print 'Image is cut on one side!'
+            return -1
+
+        impix = img1[ix1:ix2,iy1:iy2]
+        i = (np.sort(impix))[np.array(np.floor(0.1*self.fovpix**2),dtype=np.int)]
+        backgr = impix[i] #; 10% quantile of pixel distribution
+
+        impix = float(impix) - backgr
+        self.flux = np.sum(impix)
+        print 'Total flux, ADU: ', self.flux
+        impix = impix/self.flux
+        self.sigpix = np.max([impix ,0])*self.flux*self.eadu + self.ron**2  # variance in each pixel
+
+        return impix
