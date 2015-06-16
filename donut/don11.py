@@ -1,5 +1,6 @@
 
 import numpy as np
+import pylab as py
 import json
 import ztools
 
@@ -204,3 +205,100 @@ class Donut():
         zestim[0] = 0.5
 
         return zestim
+
+    def displ(self,image):
+        py.imshow(image,
+                  origin='lower',
+                  interpolation='nearest')
+
+    def find(self,impix,zres,nzer):
+        '''
+        Nzer is the highest Zernike number, zres is the  result
+        :return:
+        '''
+
+        nzer = np.max([nzer,6])
+        n1 = len(zres)
+        nzer1 = np.max([n1,nzer])
+        z0 = np.zeros(nzer1)
+        z0[0:n1-1] = zres
+
+        impixnorm = impix/np.sum(impix)
+        impixmax = np.max(impix)
+
+        xi = np.zeros(nzer)
+        for j= np.arange(1,nzer):
+            xi[j] = self.alambda/(2.*np.pi)*0.5/((np.sqrt(8.*(j+1.)-6.)-1.)/2.)
+        xi[0] = 0.1
+        indonut = impixnorm[impixnorm > impixmax*self.thresh]
+        im = impixnorm(indonut)
+        n = len(indonut)
+        chi2old = n**2
+        chi2norm = np.sum(im**2)
+
+        ncycle = 20
+        thresh0 = 0.01  # initial SVD threshold
+        norm = np.max(impix)
+        thresh = thresh0  # SVD inversion threshold, initial
+        print 'Z  ',np.arange(nzer)+1
+        self.alambda = 1. # for L-M method
+
+        for k in range(ncycle):
+            model = self.getimage(z0)
+            im0 = model[indonut]
+            chi2 = np.sqrt(np.sum((im0 - im)**2.)/chi2norm )
+            print 'Cycle: ',k+1, '  RMS= ',chi2*100, ' percent'
+            print 'um ', z0[0:nzer-1]
+
+            thresh = thresh*0.5
+
+            if (chi2 < 1e-4):
+                break
+            # do not degrade aberrations
+            elif (chi2 <= chi2old):
+                zres=z0
+                self.alambda = self.alambda*0.1
+                if ((chi2 >= chi2old*0.99) and (k > 3)):
+                    break
+                chi2old = chi2
+            else:
+                z0 = zres
+                thresh = thresh0
+                self.alambda = self.alambda*10.
+                print 'Divergence... Now LM parameter = ', self.alambda
+
+            if (k%2 == 0):
+                imat = np.zeros((n,nzer))
+                print 'Computing the interaction matrix...'
+                for j in np.range(nzer):
+                    imat[j] =  ((self.newimage(xi[j],j+1))[indonut] - im0)/xi[j]
+                ztools.svd_invert(tmat, tmp, thresh)
+    invmat = tmp # transpose(imat)
+  endif
+
+  dif = im - im0
+;  dif = (im - im0)/sig
+  dz = invmat # dif
+  z0[0:nzer-1] += 0.7*dz
+;  z0[0:nzer-1] += dz
+  z0[0] = z0[0] > 0.2
+  z0[0] = z0[0] < 1.5
+
+  d1 = min(dif) & d2 = max(dif)
+  ; display the image (left: input, right: model)
+  tmp = fltarr(512,256)
+  tmp(0:255,*) = congrid(impix, 256,256)
+  tmp(256:511,*) = congrid(model, 256,256 )
+;  tmp(256:511,*) = congrid((impix-model-d1)/(d2-d1)*impixmax, 256,256 )
+;  tmp(256:511,*) = congrid((impix-model+0.5*impixmax), 256,256 )
+  tvscl, tmp
+;  stop
+
+endfor
+
+;  zres = z0[0:nzer-1] ; Do not truncate to permit further fitting
+
+print, 'Fitting done!'
+
+end
+;-------------------------------------------------------
