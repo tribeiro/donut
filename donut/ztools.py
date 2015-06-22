@@ -267,11 +267,11 @@ def dist(size):
 
    (rows, columns) = size if isinstance(size, (list, tuple)) else (size, size)
 
-   x = numpy.arange(columns, dtype=numpy.float32)
-   x = numpy.where(x < (columns-x), x**2, (columns-x)**2)
-   a = numpy.zeros((rows, columns), dtype=numpy.float32)
+   x = np.arange(columns, dtype=np.float32)
+   x = np.where(x < (columns-x), x**2, (columns-x)**2)
+   a = np.zeros((rows, columns), dtype=np.float32)
    for i in range(rows/2+1):
-      y = numpy.sqrt(x + i**2)
+      y = np.sqrt(x + i**2)
       a[i,:] = y
       if i != 0:
          a[rows-i,:] = y

@@ -56,7 +56,7 @@ class Donut():
 
 
         # Find reasonable limits on the grid parameters
-        asperpix =  206265.*(1e-6*alambda)/D # maximum fine-pixel size
+        asperpix =  206265.*(1e-6*alambda)/d # maximum fine-pixel size
 
         ccdpix = float(pixel)
         k = np.floor(np.log10(ccdpix/asperpix)/np.log10(2.)) +1.
@@ -64,7 +64,7 @@ class Donut():
         fovpix = 2*ngrid/npixperpix     # CCD field size
         asperpix = ccdpix/npixperpix
         size = 206266.*(1e-6*alambda)/asperpix
-        Rpix = ngrid/size*D
+        Rpix = ngrid/size*d
 
         print 'Rebinning factor: ', npixperpix
         print 'Grid pixel: ',asperpix,' arcsec'
@@ -73,7 +73,7 @@ class Donut():
         print 'CCD field:  ',fovpix*ccdpix,' arcsec'
         print 'CCD format: ', fovpix
 
-        r = np.rool(np.roll(ztools.dist(2*ngrid),
+        r = np.roll(np.roll(ztools.dist(2*ngrid),
                             ngrid,
                             axis=0),
                     ngrid,
@@ -85,11 +85,12 @@ class Donut():
         n = len(inside)
 
         x = (np.arange(2*ngrid) - ngrid) # replicate(1.,2*ngrid)
-        theta = np.arctan2(x.T,x)
-        theta[ngrid][ngrid]=0.
-        self.zgrid = np.zeros((n,2))
-        self.zgrid[0] = r(inside)/Rpix
-        self.zgrid[1] = theta[inside]
+        theta = np.arctan2(x.reshape(-1,1),x)
+        theta[ngrid]=0.
+        self.zgrid = np.zeros_like([r,r])
+        #print self.zgrid[0].shape,r[inside].shape
+        self.zgrid[0][inside] = r[inside]/Rpix
+        self.zgrid[1][inside] = theta[inside]
         self.inside = inside
         self.fovpix = fovpix
         self.asperpix = asperpix
@@ -366,7 +367,11 @@ class Donut():
         fp.close()
         print 'Results are saved!'
 
-    def extract(self,img, xc, yc, nccd):
+    def extract(self,img):
+
+        xc = self.xc
+        yc = self.yc
+        nccd = self.ngrid
 
         ix1 = np.max([xc-nccd,0])
         ix2 = np.min([xc+nccd, len(img)-1])
@@ -381,9 +386,8 @@ class Donut():
         # find the center-of-gravity
         nx = img1.shape[0]
         ny = img1.shape[1]
-
-        xx = (np.arange(nx)-nx/2)#replicate(1,ny)
-        ix = np.sum(img1*xx)/itot + 2
+        xx = np.dot(np.arange(nx)-nx/2)#replicate(1,ny)
+        ix = total(img1*xx)/itot + 2
 
         yy = np.array(nx,copy=True) # (findgen(ny)-ny/2)
         iy = np.sum(img1*yy)/itot +2
