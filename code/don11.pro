@@ -63,6 +63,7 @@ pro init
   print, 'CCD format: ', fovpix
 
   r = shift(dist(2*ngrid),ngrid,ngrid) ;distance from grid center, pixs
+  print,'INIT:',Rpix,Rpix*eps
   inside = where( (r le Rpix) and (r ge Rpix*eps) )
   pupil = fltarr(2*ngrid,2*ngrid)    ; zero array
   pupil(inside) = 1
@@ -74,6 +75,7 @@ pro init
   zgrid = fltarr(n,2)
   zgrid(*,0) = r(inside)/Rpix
   zgrid(*,1) = theta(inside)
+  ;print,zgrid(*,0)
 end
 ;-------------------------------------------------------
 function getimage, z
@@ -88,7 +90,7 @@ COMMON imagedata, uampl, filter2, seeing
   nzer = n_elements(z)
   phase = zgrid(*,0)*0.  ; empty array for phase
   for j=1, nzer-1 do phase += fact*z[j]*zernike_estim(j+1,zgrid)  
-
+print ,'GETIMAGE[zgrid]:',phase[0]
   tmp = fltarr(ngrid*2,ngrid*2)
   uampl = complex(tmp, tmp)
   uampl(inside) = complex(cos(phase), sin(phase))
@@ -158,7 +160,7 @@ pro getmom, impix1, zestim
   impix (where(impix le thresh)) = 0.
 
  imh0 = total(impix)
-
+print,'GETMOM[xx*impix]:',total(xx*impix)
  xc = total(xx*impix)/imh0 ;
  yc = total(yy*impix)/imh0 ;
  mxx = total(impix*(xx-xc)^2)/imh0
@@ -167,9 +169,10 @@ pro getmom, impix1, zestim
 
   scale = npixperpix/(Ngrid/Rpix)
 
+print, 'GETMOM:',scale,xc,yc
   a2 = scale*(xc+0.5)*!pi*0.5
   a3 = scale*(yc+0.5)*!pi*0.5
-
+  print, 'GETMOM:',a2,a3
 ; stop
   a4 = scale*sqrt((mxx + myy)*0.5)/1.102
   a4 = sqrt( (a4^2 - (0.5/2.35)^2) > 0) ; subtract 0.5arcsec seeing
@@ -222,9 +225,14 @@ pro find, impix, zres, nzer, chi2, model
 ;  print, 'um ', z0[0:nzer-1], format='(A4,100F8.3)'
   lambda = 1. ; for L-M method
 
+print,"IMPIX:",size(impix)
+print,"INDONUT:",size(indonut)
+print,"IM:",size(im)
 for k=0,ncycle-1 do begin
   model = getimage(z0)
+  print,"MODEL",size(model)
   im0 = model(indonut)
+  print,"IM0:",size(im0)
   chi2 = sqrt(total((im0 - im)^2)/chi2norm )
   print, 'Cycle: ',k+1, '  RMS= ',chi2*100, ' percent' 
   print, 'um ', z0[0:nzer-1], format='(A4,100F8.3)'
@@ -253,6 +261,7 @@ for k=0,ncycle-1 do begin
   if (k mod 2 eq 0) then begin
     imat = fltarr(n,nzer)
     print, 'Computing the interaction matrix...'
+    print, 'IMAT:',size(imat)
     for j=0,nzer-1 do imat(*,j) =  ((newimage(xi[j],j+1))(indonut) - im0)/xi[j]
 ;    for j=0,nzer-1 do imat(*,j) =  ((newimage(xi[j],j+1))(indonut) - im0)/xi[j]/sig
     tmat = (transpose(imat) # imat)
@@ -300,7 +309,7 @@ pro fit, impix, immod, zres, efoc, chi2
  z0[0:5] = zres
  if (efoc lt 0) then z0[3:5] *= -1.
  zres = z0
- 
+
  find, impix, zres, nzer, chi2, immod
 
 end
@@ -408,11 +417,14 @@ function extract, img, xc, yc, nccd
       return, -1
   endif
 
+  print, ix1,ix2,iy1,iy2
   impix = img1[ix1:ix2,iy1:iy2]
   i = (sort(impix))[fix(0.1*fovpix^2)]
+  print,sort(impix)
+  print, 'EXTRACT[i]:',i
   backgr = impix[i] ; 10% quantile of pixel distribution
 ;  stop
-
+    print, 'EXTRACT[BACKGND]:',backgr
   impix = float(impix) - backgr
   flux = total(impix)
   print, 'Total flux, ADU: ', flux
@@ -420,6 +432,7 @@ function extract, img, xc, yc, nccd
   sigpix = (impix > 0)*flux*donpar.eadu + donpar.ron^2  ; variance in each pixel 
 ;  stop
 
+  print,'IMPIX SIZE:',size(impix)
   return, impix
 end
 ;------------------------------------------------

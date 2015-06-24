@@ -8,7 +8,7 @@ Translation from IDL to python of donut program developed by Andrei Tokovinin.
 
 import numpy as np
 from scipy.special import gamma,jv
-from scipy.linalg import svd
+from scipy.linalg import svd,inv
 
 class ZToolsException(Exception):
     pass
@@ -51,15 +51,15 @@ def zern_num(num):
     if num < 1:
         raise ZToolsException('NUM must be an integer greater or equal 1')
 
-    j = float(num)
-    n = np.sqrt(8.*j-7.)-1./2.
+    j = int(num)
+    n = int(np.sqrt(8*j-7)-1)/2
 
-    if n%2. == 0.:
+    if n%2 == 0.:
         # even n
-        m = 2.*((j-(n*(n+1.))/2.)/2.)
+        m = int(2*((j-(n*(n+1))/2)/2))
     else:
         # odd n
-        m = 1.+2.*((j-1.-(n*(n+1.))/2.)/2.)
+        m = int(1+2*((j-1-(n*(n+1))/2)/2))
 
     return n,m
 
@@ -75,9 +75,11 @@ def zernike_estim(mode, grid):
 
     R=0.
 
-    for J in range(int((n-m)/2)):
+    for J in range(int((n-m)/2)+1):
         S= J
         R= R+(-1.)**J*Fact(n-J)/(Fact(S)*Fact((n+m)/2-J)*Fact((n-m)/2-J))*grid[0]**(n-2*J)
+
+    print 'ZERNIKE_ESTIM[%i]:'%mode,int((n-m)/2),R.shape,grid[0][:5],grid[1][:5]
 
     if (m == 0):
         return np.sqrt(n+1.0)*R
@@ -94,6 +96,9 @@ def svd_invert(matrix,threshold):
     '''
     u,ws,v = svd(matrix)
 
+    #invw = inv(np.identity(len(ws))*ws)
+    #return ws
+
     ww = np.max(ws)
     n = len(ws)
     invw = np.identity(n)
@@ -101,6 +106,7 @@ def svd_invert(matrix,threshold):
 
     for i in range(n):
         if ws[i] < ww*threshold:
+            print 'SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold)
             invw[i][i]= 0.
             ncount+=1
         else:
@@ -108,7 +114,7 @@ def svd_invert(matrix,threshold):
 
     print '%i singular values rejected in inversion'%ncount
 
-    inv_matrix = np.dot( np.dot(v, invw), np.transpose(u) )
+    inv_matrix = np.dot( v, np.dot(invw, np.transpose(u) ) )
 
     return inv_matrix
 
@@ -270,7 +276,7 @@ def dist(size):
    x = np.arange(columns, dtype=np.float32)
    x = np.where(x < (columns-x), x**2, (columns-x)**2)
    a = np.zeros((rows, columns), dtype=np.float32)
-   for i in range(rows/2+1):
+   for i in range(int(rows)/2+1):
       y = np.sqrt(x + i**2)
       a[i,:] = y
       if i != 0:
@@ -281,10 +287,10 @@ def dist(size):
 
 def shift(matrix,s1,s2):
     return np.roll(np.roll(matrix,
-                           s1,
+                           int(s1),
                            axis=1),
-                   s2,
-                   axis=2)
+                   int(s2),
+                   axis=0)
 
 def rebin(a, shape):
     sh = shape[0],a.shape[0]//shape[0],shape[1],a.shape[1]//shape[1]
