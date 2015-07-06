@@ -79,7 +79,7 @@ def zernike_estim(mode, grid):
         S= J
         R= R+(-1.)**J*Fact(n-J)/(Fact(S)*Fact((n+m)/2-J)*Fact((n-m)/2-J))*grid[0]**(n-2*J)
 
-    print 'ZERNIKE_ESTIM[%i]:'%mode,int((n-m)/2),R.shape,grid[0][:5],grid[1][:5]
+    # print 'ZERNIKE_ESTIM[%i]:'%mode,int((n-m)/2),R.shape,grid[0][:5],grid[1][:5]
 
     if (m == 0):
         return np.sqrt(n+1.0)*R
@@ -106,7 +106,7 @@ def svd_invert(matrix,threshold):
 
     for i in range(n):
         if ws[i] < ww*threshold:
-            print 'SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold)
+            # print 'SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold)
             invw[i][i]= 0.
             ncount+=1
         else:

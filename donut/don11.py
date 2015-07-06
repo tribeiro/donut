@@ -78,7 +78,7 @@ class Donut():
                             axis=0),
                     ngrid,
                     axis=1) #distance from grid center, pixs
-        print 'INIT:',Rpix,Rpix*eps
+        # print 'INIT:',Rpix,Rpix*eps
         inside = np.bitwise_and( r <= Rpix ,
                                  r >= Rpix*eps )
         pupil = np.zeros((2*ngrid,2*ngrid))    # zero array
@@ -91,16 +91,17 @@ class Donut():
         self.zgrid = np.zeros((2,r[inside].shape[0]))
         # print self.zgrid.shape,r[inside].shape,inside.shape,n
         flat_inside=[i for i in inside.flat]
-        print 'flat_inside',len(flat_inside),self.zgrid.shape
+        # print 'flat_inside',len(flat_inside),self.zgrid.shape
         self.zgrid[0] = r[inside]/Rpix
         self.zgrid[1] = theta[inside]
-        print self.zgrid[0]
+        # print self.zgrid[0]
         self.inside = inside
         self.fovpix = fovpix
         self.asperpix = asperpix
         self.ccdpix = ccdpix
         self.npixperpix = npixperpix
         self.Rpix = Rpix
+        self.r = r
 
     def getimage(self,z):
         '''
@@ -116,9 +117,9 @@ class Donut():
         nzer = len(z)
         phase = np.zeros_like(self.zgrid[0]) # empty array for phase
 
-        for j in range(1, nzer):
+        for j in range(1,nzer):
             phase += fact*z[j]*ztools.zernike_estim(j+1,self.zgrid)
-        print 'GETIMAGE:',phase[0],phase[-1]
+        # print 'GETIMAGE:',phase[0],phase[-1]
 
         uampl = np.zeros((self.ngrid*2,self.ngrid*2),dtype=np.complex)
         #uampl = np.complex(tmp, tmp)
@@ -132,12 +133,17 @@ class Donut():
         self.seeing = z[0]
 
         #---------  compute the image ----------------------
-        imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(uampl,self.ngrid,self.ngrid)),self.ngrid,self.ngrid))**2.
-
+        # print 'GETIMAGE[NGRID]',self.ngrid
+        # imh2 = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(uampl,self.ngrid,self.ngrid)),self.ngrid,self.ngrid))**2.
+        imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(uampl,self.ngrid,self.ngrid)),self.ngrid-self.fovpix/2,self.ngrid-self.fovpix/2))**2.
+        # py.imshow(imh-imh2,aspect=1,interpolation='nearest',origin='lower')
+        # py.show()
+        #imh = np.abs(np.fft.ifft2(uampl))**2.
+        #return imh
         if (self.sflag > 0): # exact seeing blur
 
             filter2 = np.exp(-2.*np.pi**2*(self.seeing/2.35/self.asperpix/2/self.ngrid)**2*self.r**2) # unbinned image
-            imh = np.abs(np.fft2(ztools.shift(np.fft2(imh),self.ngrid,self.ngrid)*filter2))
+            imh = np.abs(np.fft.fft2(ztools.shift(np.fft.fft2(imh),self.ngrid,self.ngrid)*filter2))
             impix = ztools.rebin(imh,(self.fovpix,self.fovpix)) # rebinning into CCD pixels
 
         else:
@@ -169,7 +175,8 @@ class Donut():
             tmp = np.zeros_like(newphase,dtype=np.complex)
             tmp += np.cos(newphase)
             tmp += np.sin(newphase)*np.complex(0.,1.)
-            newampl *= tmp
+            # print newampl.shape,tmp.shape
+            newampl[self.inside] *= tmp
             filter = self.filter2
         else: # new seeing
             newseeing = self.seeing + a
@@ -180,7 +187,8 @@ class Donut():
                 filter = np.exp(-2.*np.pi**2*(newseeing/2.35/self.ccdpix/self.fovpix)**2*rr**2) # binned image
 
         #---------  compute the image ----------------------
-        imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(newampl,self.ngrid,self.ngrid)),self.ngrid,self.ngrid))**2
+        # imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(newampl,self.ngrid,self.ngrid)),self.ngrid,self.ngrid))**2
+        imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(newampl,self.ngrid,self.ngrid)),self.ngrid-self.fovpix/2,self.ngrid-self.fovpix/2))**2.
         if (self.sflag > 0): # exact seing blur
             imh = np.abs(np.fft2(ztools.shift(np.fft.fft2(imh),self.ngrid,self.ngrid)*filter))
             impix = ztools.rebin(imh,[self.fovpix,self.fovpix]) # rebinning into CCD pixels
@@ -206,7 +214,7 @@ class Donut():
         impix[ impix < thresh ] = 0.
 
         imh0 = np.sum(impix)
-        print 'GETMOM[xx*impix]:',np.sum(xx*impix)
+        # print 'GETMOM[xx*impix]:',np.sum(xx*impix)
         xc = np.sum(xx*impix)/imh0
         yc = np.sum(yy*impix)/imh0
         mxx = np.sum(impix*(xx-xc)**2)/imh0
@@ -215,11 +223,11 @@ class Donut():
 
         scale = self.npixperpix/(self.ngrid/self.Rpix)
 
-        print 'GETMOM:',scale,xc,yc
+        # print 'GETMOM:',scale,xc,yc
 
         a2 = scale*(xc+0.5)*np.pi*0.5
         a3 = scale*(yc+0.5)*np.pi*0.5
-        print 'GETMOM:',a2,a3
+        # print 'GETMOM:',a2,a3
 
         a4 = scale*np.sqrt((mxx + myy)*0.5)/1.102
         a4 = np.sqrt((a4**2 - (0.5/2.35)**2))
@@ -270,11 +278,11 @@ class Donut():
         print 'Z  ',np.arange(nzer)+1
         self.alambda = 1. # for L-M method
 
-        print 'INDONUT:',indonut.shape
-        print 'IM:',im.shape
+        # print 'INDONUT:',indonut.shape
+        # print 'IM:',im.shape
         for k in range(ncycle):
             model = self.getimage(z0)
-            print 'MODEL:',model.shape
+            # print 'MODEL:',model.shape
             im0 = model[indonut]
             chi2 = np.sqrt(np.sum((im0 - im)**2.)/chi2norm )
             invmat = np.zeros((n,nzer)).T
@@ -307,8 +315,8 @@ class Donut():
             if (k%2 == 0):
                 imat = np.zeros((n,nzer))
                 print 'Computing the interaction matrix...'
-                print 'IMAT:',imat.shape
-                print 'IM0:',im0.shape
+                # print 'IMAT:',imat.shape
+                # print 'IM0:',im0.shape
                 for j in np.arange(nzer):
                     tmp = ((self.newimage(xi[j],j+1))[indonut] - im0)/xi[j]
                     tmp_shape = tmp.shape
@@ -319,8 +327,8 @@ class Donut():
                 invmat = np.dot(tmp, imat.T)
 
             dif = im - im0
-            print invmat.shape
-            print dif.shape
+            # print invmat.shape
+            # print dif.shape
             dz = np.dot(invmat,dif)
             z0 += 0.7*dz
 
@@ -359,9 +367,20 @@ class Donut():
             self.zres[3:5] *= -1.
         self.zres = z0
 
-        chi2, immod = self.find(impix, self.zres, nzer)
+        # chi2, immod = self.find(impix, self.zres, nzer)
+        # return chi2,immod
+        # z0 = z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.163 ,  0.001  ,-0.125 , -0.095 , -0.061 , -0.020 , -0.029 ,  0.184 , -0.084 , -0.009  , 0.079 , -0.001 , -0.015]
+        import scipy.optimize as optimization
 
-        return chi2,immod
+        def chi2(z,im):
+            sfmt = ' %8.3f'*(nzer)
+            print 'um'+sfmt%tuple(z)
+            b = np.array([i for i in self.getimage(z).flat])
+            return im-b
+
+        self.zres,foo = optimization.leastsq(chi2,z0,(np.array([i for i in impix.flat]),))
+
+        return 0.,self.getimage(self.zres)
 
     def writepar(self,filename):
         '''
