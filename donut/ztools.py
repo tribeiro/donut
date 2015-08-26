@@ -79,7 +79,7 @@ def zernike_estim(mode, grid):
         S= J
         R= R+(-1.)**J*Fact(n-J)/(Fact(S)*Fact((n+m)/2-J)*Fact((n-m)/2-J))*grid[0]**(n-2*J)
 
-    print 'ZERNIKE_ESTIM[%i]:'%mode,int((n-m)/2),R.shape,grid[0][:5],grid[1][:5]
+    #print 'ZERNIKE_ESTIM[%i]:'%mode,n,m,int((n-m)/2)
 
     if (m == 0):
         return np.sqrt(n+1.0)*R
@@ -94,7 +94,8 @@ def svd_invert(matrix,threshold):
     :param threshold:
     :return:SCD-inverted matrix
     '''
-    u,ws,v = svd(matrix)
+    # print 'MATRIX:',matrix
+    u,ws,v = svd(matrix,full_matrices=True)
 
     #invw = inv(np.identity(len(ws))*ws)
     #return ws
@@ -110,11 +111,12 @@ def svd_invert(matrix,threshold):
             invw[i][i]= 0.
             ncount+=1
         else:
+            # print 'WS[%4i] %15.9f'%(i,ws[i])
             invw[i][i] = 1./ws[i]
 
     print '%i singular values rejected in inversion'%ncount
 
-    inv_matrix = np.dot( v, np.dot(invw, np.transpose(u) ) )
+    inv_matrix = np.dot(u , np.dot( invw, v))
 
     return inv_matrix
 

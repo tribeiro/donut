@@ -113,13 +113,14 @@ class Donut():
 
 
         fact = 2.*np.pi/self.alambda
+
         nzer = len(z)
         phase = np.zeros_like(self.zgrid[0]) # empty array for phase
 
         for j in range(1, nzer):
             phase += fact*z[j]*ztools.zernike_estim(j+1,self.zgrid)
         print 'GETIMAGE:',phase[0],phase[-1]
-
+        # exit(0)
         uampl = np.zeros((self.ngrid*2,self.ngrid*2),dtype=np.complex)
         #uampl = np.complex(tmp, tmp)
         self.uampl = uampl
@@ -132,6 +133,7 @@ class Donut():
         self.seeing = z[0]
 
         #---------  compute the image ----------------------
+        # imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(uampl,self.ngrid+self.fovpix/2,self.ngrid+self.fovpix/2)),self.ngrid+self.fovpix/2,self.ngrid+self.fovpix/2))**2.
         imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(uampl,self.ngrid,self.ngrid)),self.ngrid,self.ngrid))**2.
 
         if (self.sflag > 0): # exact seeing blur
@@ -169,7 +171,7 @@ class Donut():
             tmp = np.zeros_like(newphase,dtype=np.complex)
             tmp += np.cos(newphase)
             tmp += np.sin(newphase)*np.complex(0.,1.)
-            newampl *= tmp
+            newampl[self.inside] *= tmp
             filter = self.filter2
         else: # new seeing
             newseeing = self.seeing + a
@@ -181,6 +183,7 @@ class Donut():
 
         #---------  compute the image ----------------------
         imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(newampl,self.ngrid,self.ngrid)),self.ngrid,self.ngrid))**2
+        # imh = np.abs(ztools.shift(np.fft.ifft2(ztools.shift(newampl,self.ngrid+self.fovpix/2,self.ngrid+self.fovpix/2)),self.ngrid+self.fovpix/2,self.ngrid+self.fovpix/2))**2.
         if (self.sflag > 0): # exact seing blur
             imh = np.abs(np.fft2(ztools.shift(np.fft.fft2(imh),self.ngrid,self.ngrid)*filter))
             impix = ztools.rebin(imh,[self.fovpix,self.fovpix]) # rebinning into CCD pixels
@@ -268,19 +271,20 @@ class Donut():
         norm = np.max(impix)
         thresh = thresh0  # SVD inversion threshold, initial
         print 'Z  ',np.arange(nzer)+1
-        self.alambda = 1. # for L-M method
+        lbda = 1. # for L-M method
 
         print 'INDONUT:',indonut.shape
         print 'IM:',im.shape
+        invmat = np.zeros((n,nzer)).T
         for k in range(ncycle):
             model = self.getimage(z0)
             print 'MODEL:',model.shape
             im0 = model[indonut]
             chi2 = np.sqrt(np.sum((im0 - im)**2.)/chi2norm )
-            invmat = np.zeros((n,nzer)).T
+
             print 'Cycle: ',k+1, '  RMS= ',chi2*100, ' percent'
-            sfmt = ' %8.3f'*(nzer-1)
-            print 'um'+sfmt%tuple(z0[0:nzer-1])
+            sfmt = ' %8.3f'*(nzer)
+            print 'um'+sfmt%tuple(z0)
             print 'Old_X2 = %.4f'%chi2old
             print 'New_X2 = %.4f'%chi2
             print 'dX2 = %.3e'%(chi2-chi2old)
@@ -294,15 +298,15 @@ class Donut():
             # do not degrade aberrations
             elif (chi2 < chi2old):
                 zres=z0
-                self.alambda = self.alambda*0.1
+                lbda = lbda *0.1
                 if ((chi2 >= chi2old*0.99) and (k > 3)):
                     break
                 chi2old = chi2
             else:
                 z0 = zres
                 thresh = thresh0
-                self.alambda = self.alambda*10.
-                print 'Divergence... Now LM parameter = ', self.alambda
+                lbda  = lbda *10.
+                print 'Divergence... Now LM parameter = ', lbda
 
             if (k%2 == 0):
                 imat = np.zeros((n,nzer))
@@ -310,22 +314,27 @@ class Donut():
                 print 'IMAT:',imat.shape
                 print 'IM0:',im0.shape
                 for j in np.arange(nzer):
-                    tmp = ((self.newimage(xi[j],j+1))[indonut] - im0)/xi[j]
+                    nimg = self.newimage(xi[j],j+1)
+                    tmp = (nimg[indonut] - im0)/xi[j]
                     tmp_shape = tmp.shape
                     tmp = tmp.reshape(-1,tmp_shape[0])
                     imat[:,j:j+1] +=  tmp.T
                 tmat = np.dot(imat.T, imat)
                 tmp = ztools.svd_invert(tmat, thresh)
                 invmat = np.dot(tmp, imat.T)
+                # print 'TMP:', tmp
+                # print 'IMAT:', imat
+                # print 'INVMAT:', invmat
 
             dif = im - im0
-            print invmat.shape
-            print dif.shape
             dz = np.dot(invmat,dif)
+            # for i in range(len(dz)):
+            #     print 'dz[%5i] = %f'%(i,dz[i])
+            # exit(0)
             z0 += 0.7*dz
 
-            z0[0] = np.max([z0[0], 0.2])
-            z0[0] = np.min([z0[0], 1.5])
+            z0[0] = 0.2 if z0[0] < 0.2 else 1.5 if z0[0] > 1.5 else z0[0] #np.max([z0[0], 0.2])
+            # z0[0] = np.min([z0[0], 1.5])
 
             d1 = np.min(dif)
             d2 = np.max(dif)
@@ -348,7 +357,7 @@ class Donut():
         :return:
         '''
 
-        self.zres = self.getmom(impix)
+        self.zres = self.getmom(np.array(impix,copy=True))
 
         nzer = self.nzer
         #if (self.static != ''):
@@ -359,9 +368,31 @@ class Donut():
             self.zres[3:5] *= -1.
         self.zres = z0
 
-        chi2, immod = self.find(impix, self.zres, nzer)
+        impixnorm = impix/np.sum(impix)
+        impixmax = np.max(impix)
 
-        return chi2,immod
+        xi = np.zeros(nzer)
+        for j in np.arange(1,nzer):
+            xi[j] = self.alambda/(2.*np.pi)*0.5/((np.sqrt(8.*(j+1.)-6.)-1.)/2.)
+        xi[0] = 0.1
+        indonut = impixnorm > impixmax*self.thresh
+
+        chi2, immod = self.find(impix, self.zres, nzer)
+        return chi2,immod,0
+        # z0 = z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.163 ,  0.001  ,-0.125 , -0.095 , -0.061 , -0.020 , -0.029 ,  0.184 , -0.084 , -0.009  , 0.079 , -0.001 , -0.015]
+        import scipy.optimize as optimization
+
+        def chi2(z,im):
+            sfmt = ' %8.3f'*(nzer)
+            print 'um'+sfmt%tuple(z)
+            # b = np.array([i for i in self.getimage(z).flat])
+            b = self.getimage(z)[indonut]
+            return im-b
+
+        self.zres,foo = optimization.leastsq(chi2,z0,(impix[indonut],)) #(np.array([i for i in impix.flat]),))
+        # self.zres,foo = optimization.leastsq(chi2,z0,(np.array([i for i in impix.flat]),))
+
+        return 0.,self.getimage(self.zres),indonut
 
     def writepar(self,filename):
         '''
@@ -442,11 +473,11 @@ class Donut():
         ix = np.array(np.floor(ix),dtype=np.int)+ nx/2
         iy = np.array(np.floor(iy),dtype=np.int)+ ny/2
 
-        ix1 = np.max([ix-nccd/2-1 ,0])
-        ix2 = np.min([ix1+nccd, nx-1])
+        ix1 = np.max([ix-nccd/2 ,0])
+        ix2 = np.min([ix1+nccd, nx])
 
-        iy1 = np.max([iy-nccd/2-1 ,0])
-        iy2 = np.min([iy1+nccd , ny-1])
+        iy1 = np.max([iy-nccd/2 ,0])
+        iy2 = np.min([iy1+nccd , ny])
 
         if (ix2-ix1 < nccd-1) or (iy2-iy1 < nccd-1):
             print 'Image is cut on one side!'
