@@ -1,0 +1,95 @@
+#! /usr/bin/env python
+
+import os,sys
+import numpy as np
+import pylab as py
+from donut.don11 import Donut
+from astropy.io import fits
+from astropy.table import Table
+import json
+import logging
+from tempfile import NamedTemporaryFile
+
+logging.basicConfig(format='%(asctime)s[%(levelname)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
+                    level=logging.DEBUG,
+                    filename=os.path.basename(__file__)+'.log',
+                    filemode='w')
+
+log = logging.getLogger(__name__)
+
+def main(argv):
+
+    from optparse import OptionParser
+
+    parser = OptionParser()
+
+    parser.add_option('-i','--image',
+                      help = 'Fit image file with donuts to measure.'
+                      ,type='string')
+    parser.add_option('-c','--catalog',
+                      help = 'Sextractor catalog with sources position.'
+                      ,type='string')
+    parser.add_option('-p','--parameters',
+                      help = 'Base donut json parameters. Position will be overwritten.'
+                      ,type='string')
+    parser.add_option('-o','--output',
+                      help = 'Output file name.'
+                      ,type='string')
+
+    opt, args = parser.parse_args(argv)
+
+    # Read sextractor catalog
+    cat = Table.read(opt.catalog,
+                     format='ascii.sextractor')
+
+    # Read basic parameters
+    with open(opt.parameters) as par_file:
+        donutpars = json.load(par_file)
+
+    # Write donut parameter catalog
+    basepar = donutpars['donpar'][0]
+    parcatalog = {'donpar':[]}
+
+    for src in cat:
+        basepar['XC'] = int(src['X_IMAGE'])
+        basepar['YC'] = int(src['Y_IMAGE'])
+        parcatalog['donpar'].append(dict(basepar))
+
+    tmpCat = NamedTemporaryFile(delete=False)
+    log.info('Donut catalog file: %s'%tmpCat.name)
+
+    with open(tmpCat.name,'w') as fp:
+        json.dump(parcatalog,fp)
+
+    # Read image
+    img = fits.getdata(opt.image)
+
+    # Store the results
+    zres = np.zeros((len(cat),basepar['NZER']+2))
+
+    def donutfit(index):
+        don = Donut()
+
+        don.readpar(tmpCat.name,index)
+        don.init()
+
+        piximg = don.extract(img.T)
+
+        x2,immod,zer = don.fit(piximg.T)
+
+        zres[index][0] = don.xc
+        zres[index][1] = don.yc
+        zres[index][2:] = zer
+
+    for i in range(len(cat)):
+        log.info('Working on %4i/%4i'%(i+1,len(cat)))
+        print 'Working on %4i/%4i'%(i+1,len(cat))
+        donutfit(i)
+
+    log.info('Writing output to %s '%opt.output)
+    np.save(opt.output,zres)
+
+    # print tmpCat.name
+
+if __name__ == '__main__':
+    main(sys.argv)

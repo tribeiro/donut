@@ -3,6 +3,9 @@ import numpy as np
 import pylab as py
 import json
 import ztools
+import logging
+
+log = logging.getLogger(__name__)
 
 '''
 Measuring low-order aberrations from defocused images
@@ -30,14 +33,13 @@ class Donut():
         # self.sigpix = None
         # self.flux = None
 
-    def readpar(self,filename):
+    def readpar(self,filename,ext=0):
 
         with open(filename) as data_file:
             data = json.load(data_file)
 
-        for key in data['donpar']:
-            k = key.keys()[0]
-            self.__dict__[k.lower()] = key[k]
+        for key in data['donpar'][ext].keys():
+            self.__dict__[key.lower()] = data['donpar'][ext][key]
 
         self.data_struct = data
 
@@ -66,35 +68,35 @@ class Donut():
         size = 206266.*(1e-6*alambda)/asperpix
         Rpix = ngrid/size*d
 
-        print 'Rebinning factor: ', npixperpix
-        print 'Grid pixel: ',asperpix,' arcsec'
-        print 'Grid size: ', size,' m'
-        print 'CCD pixel:  ',ccdpix,' arcsec'
-        print 'CCD field:  ',fovpix*ccdpix,' arcsec'
-        print 'CCD format: ', fovpix
+        log.info('Rebinning factor: %s'% npixperpix)
+        log.info('Grid pixel: %s arcsec'%asperpix)
+        log.info('Grid size: %s m'%size)
+        log.info('CCD pixel:  %s arcsec'%ccdpix)
+        log.info('CCD field:  %s arcsec'%(fovpix*ccdpix))
+        log.info('CCD format: %s'% fovpix)
 
         r = np.roll(np.roll(ztools.dist(2*ngrid),
                             ngrid,
                             axis=0),
                     ngrid,
                     axis=1) #distance from grid center, pixs
-        print 'INIT:',Rpix,Rpix*eps
+        log.debug('INIT: %s %s'%(Rpix,Rpix*eps))
         inside = np.bitwise_and( r <= Rpix ,
                                  r >= Rpix*eps )
         pupil = np.zeros((2*ngrid,2*ngrid))    # zero array
         pupil[inside] = 1
         n = inside.size
 
-        x = (np.arange(2*ngrid) - ngrid) # replicate(1.,2*ngrid)
-        theta = np.arctan2(x.reshape(-1,1),x)
+        # x = (findgen(2*ngrid) - ngrid) # replicate(1.,2*ngrid)
+        x = np.array([(np.arange(2*ngrid) - ngrid)]*2*ngrid) # replicate(1.,2*ngrid)
+        theta = np.arctan2(x.T,x)
         # theta[ngrid]=0.
         self.zgrid = np.zeros((2,r[inside].shape[0]))
         # print self.zgrid.shape,r[inside].shape,inside.shape,n
         flat_inside=[i for i in inside.flat]
-        print 'flat_inside',len(flat_inside),self.zgrid.shape
+        log.debug('flat_inside: %s %s'%(len(flat_inside),self.zgrid.shape))
         self.zgrid[0] = r[inside]/Rpix
         self.zgrid[1] = theta[inside]
-        print self.zgrid[0]
         self.inside = inside
         self.fovpix = fovpix
         self.asperpix = asperpix
@@ -119,7 +121,7 @@ class Donut():
 
         for j in range(1, nzer):
             phase += fact*z[j]*ztools.zernike_estim(j+1,self.zgrid)
-        print 'GETIMAGE:',phase[0],phase[-1]
+        log.debug('GETIMAGE: %s %s'%(phase[0],phase[-1]))
         # exit(0)
         uampl = np.zeros((self.ngrid*2,self.ngrid*2),dtype=np.complex)
         #uampl = np.complex(tmp, tmp)
@@ -201,15 +203,16 @@ class Donut():
         '''
         n = self.ngrid/self.npixperpix
 
-        xx = np.array([np.arange(n*2)-n]*(2*n))#replicate(1,2*n)
-        yy = np.array([np.arange(n*2)-n]*(2*n)).T#replicate(1,2*n)
+        xx = np.array([np.arange(n*2)-n]*(2*n))   #replicate(1,2*n)
+        yy = np.array([np.arange(n*2)-n]*(2*n)).T #replicate(1,2*n)
 
         thresh = np.max(impix1)*self.thresh
         impix = impix1
         impix[ impix < thresh ] = 0.
 
         imh0 = np.sum(impix)
-        print 'GETMOM[xx*impix]:',np.sum(xx*impix)
+        # print xx*impix
+        log.debug('GETMOM[xx*impix]: %f'%np.sum(xx*impix))
         xc = np.sum(xx*impix)/imh0
         yc = np.sum(yy*impix)/imh0
         mxx = np.sum(impix*(xx-xc)**2)/imh0
@@ -218,11 +221,11 @@ class Donut():
 
         scale = self.npixperpix/(self.ngrid/self.Rpix)
 
-        print 'GETMOM:',scale,xc,yc
+        log.debug('GETMOM: %s %s %s'%(scale,xc,yc))
 
         a2 = scale*(xc+0.5)*np.pi*0.5
         a3 = scale*(yc+0.5)*np.pi*0.5
-        print 'GETMOM:',a2,a3
+        log.debug('GETMOM: %.2f %.2f'%(a2,a3))
 
         a4 = scale*np.sqrt((mxx + myy)*0.5)/1.102
         a4 = np.sqrt((a4**2 - (0.5/2.35)**2))
@@ -270,24 +273,25 @@ class Donut():
         thresh0 = 0.01  # initial SVD threshold
         norm = np.max(impix)
         thresh = thresh0  # SVD inversion threshold, initial
-        print 'Z  ',np.arange(nzer)+1
+        log.info('Z  %s'%(np.arange(nzer)+1))
         lbda = 1. # for L-M method
 
-        print 'INDONUT:',indonut.shape
-        print 'IM:',im.shape
+        log.debug('INDONUT: %i %i'%(indonut.shape))
+        log.debug('IM: %i '%(im.shape))
+
         invmat = np.zeros((n,nzer)).T
         for k in range(ncycle):
             model = self.getimage(z0)
-            print 'MODEL:',model.shape
+            # print 'MODEL:',model.shape
             im0 = model[indonut]
             chi2 = np.sqrt(np.sum((im0 - im)**2.)/chi2norm )
 
-            print 'Cycle: ',k+1, '  RMS= ',chi2*100, ' percent'
+            log.info('Cycle: %4i   RMS=  %.4f %%'%(k+1,chi2*100))
             sfmt = ' %8.3f'*(nzer)
-            print 'um'+sfmt%tuple(z0)
-            print 'Old_X2 = %.4f'%chi2old
-            print 'New_X2 = %.4f'%chi2
-            print 'dX2 = %.3e'%(chi2-chi2old)
+            log.info('um'+sfmt%tuple(z0))
+            log.info('Old_X2 = %.4f'%chi2old)
+            log.info('New_X2 = %.4f'%chi2)
+            log.info('dX2 = %.3e'%(chi2-chi2old))
 
             thresh = thresh*0.5
 
@@ -306,13 +310,13 @@ class Donut():
                 z0 = zres
                 thresh = thresh0
                 lbda  = lbda *10.
-                print 'Divergence... Now LM parameter = ', lbda
+                log.warning('Divergence... Now LM parameter = %.2e'%lbda)
 
             if (k%2 == 0):
                 imat = np.zeros((n,nzer))
-                print 'Computing the interaction matrix...'
-                print 'IMAT:',imat.shape
-                print 'IM0:',im0.shape
+                log.debug('Computing the interaction matrix...')
+                # print 'IMAT:',imat.shape
+                # print 'IM0:',im0.shape
                 for j in np.arange(nzer):
                     nimg = self.newimage(xi[j],j+1)
                     tmp = (nimg[indonut] - im0)/xi[j]
@@ -341,12 +345,12 @@ class Donut():
             #display the image (left: input, right: model)
             self.displ(np.append(impix,model,axis=-1))
 
-        print 'Fitting done!'
-        return chi2, model
+        log.info('Fitting done!')
+        return chi2, model, z0
 
     #-------------------------------------------------------
 
-    def fit(self,impix, efoc):
+    def fit(self,impix):
         '''
         preliminary and final fitting
         :param impix:
@@ -364,8 +368,8 @@ class Donut():
         z0 = self.readz()#self.static)# else z0 = fltarr(nzer)
 
         z0[0:6] = self.zres
-        if (efoc < 0):
-            self.zres[3:5] *= -1.
+        if (self.efoc < 0):
+            z0[3:6] *= -1
         self.zres = z0
 
         impixnorm = impix/np.sum(impix)
@@ -377,8 +381,8 @@ class Donut():
         xi[0] = 0.1
         indonut = impixnorm > impixmax*self.thresh
 
-        chi2, immod = self.find(impix, self.zres, nzer)
-        return chi2,immod,0
+        chi2, immod, zernik = self.find(impix, self.zres, nzer)
+        return chi2,immod,zernik
         # z0 = z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.163 ,  0.001  ,-0.125 , -0.095 , -0.061 , -0.020 , -0.029 ,  0.184 , -0.084 , -0.009  , 0.079 , -0.001 , -0.015]
         import scipy.optimize as optimization
 
@@ -407,7 +411,7 @@ class Donut():
             k = key.keys()[0]
             data[k] = self.__dict__[k.lower()]
 
-        print 'Parameters are saved in ',filename
+        log.info('Parameters are saved in %s'%filename)
 
     def savez(self, z, filename):
         '''
@@ -418,7 +422,7 @@ class Donut():
         '''
 
         np.savetxt(filename,fmt='%8.3f',X=z)
-        print 'Zernike vector is saved in ',filename
+        log.info('Zernike vector is saved in %s'%filename)
 
 
     def readz(self):
@@ -436,7 +440,7 @@ class Donut():
             fp.write(fmt_str%tuple_res)
 
         fp.close()
-        print 'Results are saved!'
+        log.info('Results are saved!')
 
     def extract(self,img):
 
@@ -453,21 +457,19 @@ class Donut():
 
         img1 = img1 - np.min(img1)  # subtract background
         itot = np.sum(img1)
+        log.debug('ITOT: %f'%itot)
 
         # find the center-of-gravity
         nx = img1.shape[0]
         ny = img1.shape[1]
-
-        xx = np.zeros((nx,ny))
-        for i in range(nx):
-            xx[i] += np.arange(ny)-ny/2
+        #xx = (findgen(nx)-nx/2)#replicate(1,ny)
+        xx = np.array([np.arange(nx)-nx/2]*ny).T
 
         ix = np.sum(img1*xx)/itot + 2
 
-        yy = np.zeros((ny,nx))
-        for i in range(ny):
-            yy[i] += np.arange(nx)-nx/2
-        yy = yy.T
+        #yy = replicate(1,nx) # (findgen(ny)-ny/2)
+        yy = np.array([np.arange(ny)-ny/2]*nx)
+
         iy = np.sum(img1*yy)/itot +2
 
         ix = np.array(np.floor(ix),dtype=np.int)+ nx/2
@@ -480,25 +482,24 @@ class Donut():
         iy2 = np.min([iy1+nccd , ny])
 
         if (ix2-ix1 < nccd-1) or (iy2-iy1 < nccd-1):
-            print 'Image is cut on one side!'
+            log.error('Image is cut on one side!')
             return -1
 
-        print ix1,ix2,iy1,iy2
         impix = np.array(img1[ix1:ix2,iy1:iy2])
 
         nnx,nny = impix.shape
         pixhist = impix.flat
         pixsort = np.argsort(pixhist)
         i = int(np.floor(0.1*self.fovpix**2))
-        print pixhist[pixsort][:i]
-        print pixsort
-        print pixsort[i]
+        # print pixhist[pixsort][:i]
+        # print pixsort
+        # print pixsort[i]
         backgr = pixhist[pixsort[i]] #; 10% quantile of pixel distribution
-        print 'EXTRACT[BACKGND]:',backgr
+        log.debug('EXTRACT[BACKGND]: %f'%backgr)
 
         impix = impix - backgr
         self.flux = np.sum(impix)
-        print 'Total flux, ADU: ', self.flux
+        log.debug('Total flux, ADU: %f'%self.flux)
         impix = impix/self.flux
         maxpix = np.max(impix)
         self.sigpix = np.max([maxpix, 0.])*self.flux*self.eadu + self.ron**2  # variance in each pixel

@@ -1,21 +1,21 @@
 {
   "donpar":[
-      {"D": 3.93400},
-      {"EPS": 0.420000},
-      {"ALAMBDA": 0.800000},
-      {"PIXEL": 0.270000},
-      {"NGRID": 64},
-      {"RON": 10.0000},
-      {"EADU": 2.00000},
-      {"THRESH": 0.0500000},
-      {"NZER": 21},
-      {"DATADIR": "./" },
-      {"STATIC": "" },
-      {"RESULT": "donut.dat"},
-      {"PARFILE": "donut.par"},
-      {"IMFILE": "focus.fits"},
-      {"XC": 466},
-      {"YC": 372},
-      {"EFOC": 1}
+      {"D": 3.93400 ,
+       "EPS": 0.420000 ,
+       "ALAMBDA": 0.800000 ,
+       "PIXEL": 0.270000 ,
+       "NGRID": 64 ,
+       "RON": 10.0000 ,
+       "EADU": 2.00000 ,
+       "THRESH": 0.0500000 ,
+       "NZER": 21 ,
+       "DATADIR": "./"  ,
+       "STATIC": ""  ,
+       "RESULT": "donut.dat" ,
+       "PARFILE": "donut.par" ,
+       "IMFILE": "focus.fits" ,
+       "XC": 466 ,
+       "YC": 372 ,
+       "EFOC": 1}
     ]
 }

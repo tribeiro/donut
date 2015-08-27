@@ -160,6 +160,7 @@ pro getmom, impix1, zestim
   impix (where(impix le thresh)) = 0.
 
  imh0 = total(impix)
+ print,xx*impix
 print,'GETMOM[xx*impix]:',total(xx*impix)
  xc = total(xx*impix)/imh0 ;
  yc = total(yy*impix)/imh0 ;
@@ -398,6 +399,7 @@ function extract, img, xc, yc, nccd
   img1 = img[ix1:ix2,iy1:iy2] ; cut out the required part
   img1 = img1 - min(img1)  ; subtract background
   itot = total(img1)
+  print, 'ITOT',itot
 
   ; find the center-of-gravity
    nx = n_elements(img1(*,0)) & ny = n_elements(img1(0,*))  
@@ -407,6 +409,7 @@ function extract, img, xc, yc, nccd
    yy = replicate(1,nx) # (findgen(ny)-ny/2)
    iy = total(img1*yy)/itot +2
 
+    print,'ix = ',ix,' | iy = ',iy
   ix = fix(ix)+ nx/2 & iy = fix(iy)+ ny/2
 
   ix1 = ix-nccd/2 >0 & ix2 = ix1+nccd < nx-1

@@ -64,15 +64,15 @@ p = (mode MOD 2)
 R=0d0
 
 For J=0,(n-m)/2 Do Begin
-   print,"-->",J
+   ;print,"-->",J
    S=J
    R=R+(-1.)^J*Fact(n-J)/(Fact(S)*Fact((n+m)/2-J)$_
                           *Fact((n-m)/2-J))*grid(*,0)^(n-2*J)
 Endfor
 
-print, 'ZERNIKE_ESTIM:',mode,(n-m)/2,size(R)
-print, 'ZERNIKE_ESTIM[GRID0]:',grid[0,0],grid[1,0],grid[2,0],grid[3,0],grid[4,0],grid[5,0]
-print, 'ZERNIKE_ESTIM[GRID1]:',grid[0,1],grid[1,1],grid[2,1],grid[3,1],grid[4,1],grid[5,1]
+;print, 'ZERNIKE_ESTIM:',mode,(n-m)/2,size(R)
+;print, 'ZERNIKE_ESTIM[GRID0]:',grid[0,0],grid[1,0],grid[2,0],grid[3,0],grid[4,0],grid[5,0]
+;print, 'ZERNIKE_ESTIM[GRID1]:',grid[0,1],grid[1,1],grid[2,1],grid[3,1],grid[4,1],grid[5,1]
 
 IF (m EQ 0) Then ZZ=Sqrt(n+1d0)*R
 
@@ -100,7 +100,7 @@ FOR i=0, n-1 DO BEGIN
   IF ws(i) LT ww*threshold THEN BEGIN 
      invw(i,i) = 0.
      ncount = ncount+1
-     print ,'SVD_INVERT: Value ',i,'=',ws(i)," rejected (threshold=",threshold,")."
+     print ,'SVD_INVERT: Value ',i,'=',ws(i)," rejected (threshold=",ww*threshold,")."
   ENDIF  ELSE invw(i,i)=1./ws(i)
 ENDFOR
 

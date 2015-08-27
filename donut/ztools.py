@@ -9,6 +9,9 @@ Translation from IDL to python of donut program developed by Andrei Tokovinin.
 import numpy as np
 from scipy.special import gamma,jv
 from scipy.linalg import svd,inv
+import logging
+
+log = logging.getLogger(__name__)
 
 class ZToolsException(Exception):
     pass
@@ -107,14 +110,14 @@ def svd_invert(matrix,threshold):
 
     for i in range(n):
         if ws[i] < ww*threshold:
-            print 'SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold)
+            log.info('SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold))
             invw[i][i]= 0.
             ncount+=1
         else:
             # print 'WS[%4i] %15.9f'%(i,ws[i])
             invw[i][i] = 1./ws[i]
 
-    print '%i singular values rejected in inversion'%ncount
+    log.info('%i singular values rejected in inversion'%ncount)
 
     inv_matrix = np.dot(u , np.dot( invw, v))
 
