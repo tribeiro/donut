@@ -15,8 +15,11 @@ Translation to python Jun, 2015
 
 class Donut():
 
-    def __init__(self):
-        pass
+    seeingMin = 0.2
+    seeingMax = 3.0
+
+    #def __init__(self):
+    #    pass
         # Stores "common block" from IDL routine
         # self.donpar = None
         # self.ngrid = None
@@ -337,7 +340,7 @@ class Donut():
             # exit(0)
             z0 += 0.7*dz
 
-            z0[0] = 0.2 if z0[0] < 0.2 else 1.5 if z0[0] > 1.5 else z0[0] #np.max([z0[0], 0.2])
+            z0[0] = self.seeingMin if z0[0] < self.seeingMin else self.seeingMax if z0[0] > self.seeingMax else z0[0] #np.max([z0[0], 0.2])
             # z0[0] = np.min([z0[0], 1.5])
 
             d1 = np.min(dif)

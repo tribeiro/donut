@@ -37,13 +37,15 @@ def main(argv):
     log.info('Reading input catalog: %s'%opt.filename)
     cat = np.load(opt.filename).T
 
-    pix2mm = 10. # pixel size in um
+    pix2mm = 0.01 # pixel size in um
     id_seeing = 2
     id_focus = 5
     id_astigx = 6
     id_astigy = 7
     id_commax = 8
     id_commay = 9
+
+    ####################################################################################################################
 
     def fit():
 
@@ -60,7 +62,7 @@ def main(argv):
             yres = y - fit(x) # residue
             avg = np.mean(yres)
             std = np.std(yres)
-            mask = np.sqrt(yres**2.) < std*3
+            mask = np.sqrt(yres**2.) < std*1.5
             new_nreject = len(mask)-len(mask[mask])
 
             log.debug('Iter[%i/%i]: Avg = %f Std = %f Reject. %i'%(iter,
@@ -81,8 +83,39 @@ def main(argv):
 
     ####################################################################################################################
 
-    x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_astigx]
+    def plot():
+
+        py.plot(x,
+                y,'o',markerfacecolor='w')
+        py.plot(x[mask],
+                y[mask],'bo')
+
+        py.plot(xx,
+                newFit(xx),'r-')
+
+        ylim = py.ylim()
+        xlim = py.xlim()
+
+        if xlim[0] < root < xlim[1]:
+            py.plot([root,root],ylim,'r--')
+            py.ylim(ylim)
+
+        py.grid()
+
+        return
+
+    ####################################################################################################################
+
+    center = [9216/2,9232/2]
+    xx = (cat[0]-center[0])
+    yy = (cat[1]-center[1])
+    pre_mask = np.bitwise_and(np.abs(xx) > 100, np.abs(yy)> 100)
+
+    xx = (cat[0][pre_mask]-center[0])
+    yy = (cat[1][pre_mask]-center[1])
+
+    x = np.sqrt(xx**2.+yy*2.)*pix2mm #* yy/np.abs(yy)
+    y = cat[id_astigx][pre_mask]
 
     niter = opt.niter if opt.niter > 0 else 1
 
@@ -101,27 +134,12 @@ def main(argv):
 
     py.subplot(231)
 
-    py.plot(x,
-            y,'o',markerfacecolor='w')
-    py.plot(x[mask],
-            y[mask],'bo')
-
-    py.plot(xx,
-            newFit(xx),'r-')
-
-    ylim = py.ylim()
-
-    py.plot([root,root],ylim,'r--')
-    py.ylim(ylim)
-
-    py.grid()
+    plot()
 
     ####################################################################################################################
 
-    py.subplot(232)
-
     # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_astigy]
+    y = cat[id_astigy][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -134,27 +152,16 @@ def main(argv):
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
-    py.plot(x,
-            y,'o',markerfacecolor='w')
-    py.plot(x[mask],
-            y[mask],'bo')
+    py.subplot(232)
 
-    py.plot(xx,
-            newFit(xx),'r-')
-
-    ylim = py.ylim()
-
-    py.plot([root,root],ylim,'r--')
-    py.ylim(ylim)
-
-    py.grid()
+    plot()
 
     ####################################################################################################################
 
     py.subplot(233)
 
     # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_seeing]
+    y = cat[id_seeing][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -167,27 +174,14 @@ def main(argv):
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
-    py.plot(x,
-            y,'o',markerfacecolor='w')
-    py.plot(x[mask],
-            y[mask],'bo')
-
-    py.plot(xx,
-            newFit(xx),'r-')
-
-    # ylim = py.ylim()
-
-    # py.plot([root,root],ylim,'r--')
-    # py.ylim(ylim)
-
-    py.grid()
+    plot()
 
     ####################################################################################################################
 
     py.subplot(234)
 
     # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_commax]
+    y = cat[id_commax][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -200,27 +194,14 @@ def main(argv):
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
-    py.plot(x,
-            y,'o',markerfacecolor='w')
-    py.plot(x[mask],
-            y[mask],'bo')
-
-    py.plot(xx,
-            newFit(xx),'r-')
-
-    ylim = py.ylim()
-
-    py.plot([root,root],ylim,'r--')
-    py.ylim(ylim)
-
-    py.grid()
+    plot()
 
     ####################################################################################################################
 
     py.subplot(235)
 
     # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_commay]
+    y = cat[id_commay][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -233,27 +214,14 @@ def main(argv):
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
-    py.plot(x,
-            y,'o',markerfacecolor='w')
-    py.plot(x[mask],
-            y[mask],'bo')
-
-    py.plot(xx,
-            newFit(xx),'r-')
-
-    ylim = py.ylim()
-
-    py.plot([root,root],ylim,'r--')
-    py.ylim(ylim)
-
-    py.grid()
+    plot()
 
     ####################################################################################################################
 
     py.subplot(236)
 
     # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_focus]
+    y = cat[id_focus][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -286,14 +254,14 @@ def main(argv):
 
     # Z4 + h [2 - cos(alpha_x) - cos(alpha_y)]
     CFP = 291.36 # Comma Free Point in mm
-    zhexapod = ShiftZ - CFP * (2. - np.cos(V_angle.rad) - np.cos(U_angle.rad))
-    xhexapod = ShiftX + CFP * np.sin(V_angle.rad)
-    yhexapod = ShiftY + CFP * np.sin(U_angle.rad)
+    zhexapod = ShiftZ #- CFP * (2. - np.cos(V_angle.rad) - np.cos(U_angle.rad))
+    xhexapod = ShiftX #+ CFP * np.sin(V_angle.rad)
+    yhexapod = ShiftY #+ CFP * np.sin(U_angle.rad)
 
     print('''Hexapod offset:
-    X = %+8.4f mm
-    Y = %+8.4f mm
-    Z = %+8.4f mm
+    X = %+8.4f um
+    Y = %+8.4f um
+    Z = %+8.4f um
     U = %s degrees
     V = %s degrees
     '''%(xhexapod/10,
