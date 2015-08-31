@@ -3,10 +3,12 @@
 import os,sys
 import numpy as np
 import pylab as py
+from astropy import units as u
+from astropy.coordinates import Angle
 import logging
 
 logging.basicConfig(format='%(asctime)s[%(levelname)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ def main(argv):
     log.info('Reading input catalog: %s'%opt.filename)
     cat = np.load(opt.filename).T
 
-    pix2mm = 0.009 # pixel size in mm
+    pix2mm = 10. # pixel size in um
     id_seeing = 2
     id_focus = 5
     id_astigx = 6
@@ -61,7 +63,7 @@ def main(argv):
             mask = np.sqrt(yres**2.) < std*3
             new_nreject = len(mask)-len(mask[mask])
 
-            log.info('Iter[%i/%i]: Avg = %f Std = %f Reject. %i'%(iter,
+            log.debug('Iter[%i/%i]: Avg = %f Std = %f Reject. %i'%(iter,
                                                                   niter,
                                                                   avg,
                                                                   std,
@@ -86,11 +88,14 @@ def main(argv):
 
     z,mask = fit()
     root = -z[1]/z[0]
+    V_angle = Angle(z[0]*u.rad)
+
     newFit = np.poly1d(z)
-    log.info('Rejected %i of %i'%(len(mask)-len(mask[mask]),
+    log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
-    log.info('Angle = %.4f degrees'%(z[0]*180/np.pi))
-    log.info('Center X = %.4f mm / %.2f pixels'%(root, root/pix2mm))
+    log.info('Angle V = %s degrees'%(V_angle.to_string(unit=u.degree, sep=(':', ':', ':'))))
+    log.info('Center X = %.4f mm / %.2f pixels'%(root*1e-3, root/pix2mm))
+
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
@@ -120,11 +125,12 @@ def main(argv):
 
     z,mask = fit()
     root = -z[1]/z[0]
+    U_angle = Angle(z[0]*u.rad)
     newFit = np.poly1d(z)
-    log.info('Rejected %i of %i'%(len(mask)-len(mask[mask]),
+    log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
-    log.info('Angle = %.4f degrees'%(z[0]*180/np.pi))
-    log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
+    log.info('Angle U = %s degrees'%(U_angle.to_string(unit=u.degree, sep=(':', ':', ':'))))
+    log.info('Center Y = %.4f mm / %.2f pixels'%(root*1e-3, root/pix2mm))
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
@@ -153,8 +159,9 @@ def main(argv):
     z,mask = fit()
     root = -z[1]/z[0]
     newFit = np.poly1d(z)
-    log.info('Rejected %i of %i'%(len(mask)-len(mask[mask]),
+    log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
+    Seeing = z[1]
     log.info('Seeing = %.4f arcsec'%(z[1]))
     #log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
 
@@ -185,8 +192,9 @@ def main(argv):
     z,mask = fit()
     root = -z[1]/z[0]
     newFit = np.poly1d(z)
-    log.info('Rejected %i of %i'%(len(mask)-len(mask[mask]),
+    log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
+    ShiftX = z[1]
     log.info('ShiftX = %.4f mm'%(z[1]))
     #log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
 
@@ -217,8 +225,9 @@ def main(argv):
     z,mask = fit()
     root = -z[1]/z[0]
     newFit = np.poly1d(z)
-    log.info('Rejected %i of %i'%(len(mask)-len(mask[mask]),
+    log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
+    ShiftY = z[1]
     log.info('ShiftY = %.4f mm'%(z[1]))
     #log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
 
@@ -248,21 +257,23 @@ def main(argv):
 
     z,mask = fit()
     root = -z[1]/z[0]
-    newFit = np.poly1d(z)
-    log.info('Rejected %i of %i'%(len(mask)-len(mask[mask]),
+    newFit = np.poly1d([z[0],0])
+    log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
-    log.info('ShiftZ = %.4f mm'%(z[1]))
+    yfoc = y-newFit(x)
+    ShiftZ = np.mean(yfoc[mask])
+    log.info('ShiftZ = %.4f mm'%(ShiftZ))
     #log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
 
     py.plot(x,
-            y,'o',markerfacecolor='w')
+            yfoc,'o',markerfacecolor='w')
     py.plot(x[mask],
-            y[mask],'bo')
+            yfoc[mask],'bo')
 
     py.plot(xx,
-            newFit(xx),'r-')
+            np.zeros_like(xx)+np.mean(yfoc[mask]),'r-')
 
     # ylim = py.ylim()
     #
@@ -273,6 +284,24 @@ def main(argv):
 
     ####################################################################################################################
 
+    # Z4 + h [2 - cos(alpha_x) - cos(alpha_y)]
+    CFP = 291.36 # Comma Free Point in mm
+    zhexapod = ShiftZ - CFP * (2. - np.cos(V_angle.rad) - np.cos(U_angle.rad))
+    xhexapod = ShiftX + CFP * np.sin(V_angle.rad)
+    yhexapod = ShiftY + CFP * np.sin(U_angle.rad)
+
+    print('''Hexapod offset:
+    X = %+8.4f mm
+    Y = %+8.4f mm
+    Z = %+8.4f mm
+    U = %s degrees
+    V = %s degrees
+    '''%(xhexapod/10,
+         yhexapod/10,
+         zhexapod/10,
+         U_angle.to_string(unit=u.degree, sep=(':', ':', ':')),
+         V_angle.to_string(unit=u.degree, sep=(':', ':', ':')))
+             )
     py.show()
 
 if __name__ == '__main__':
