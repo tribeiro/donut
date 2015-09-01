@@ -75,11 +75,20 @@ def main(argv):
 
         piximg = don.extract(img.T)
 
-        x2,immod,zer = don.fit(piximg.T)
+        try:
+            if piximg.shape == (don.ngrid/2,don.ngrid/2):
+                x2,immod,zer = don.fit(piximg.T)
 
-        zres[index][0] = don.xc
-        zres[index][1] = don.yc
-        zres[index][2:] = zer
+                zres[index][0] = don.xc
+                zres[index][1] = don.yc
+                zres[index][2:] = zer
+            else:
+                log.warning('Source %i to close to the border. Skipping...'%(index))
+        except AttributeError,e:
+            log.exception(e)
+            pass
+        except Exception,e:
+            raise
 
     for i in range(len(cat)):
         log.info('Working on %4i/%4i'%(i+1,len(cat)))
