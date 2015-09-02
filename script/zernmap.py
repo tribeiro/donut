@@ -73,8 +73,9 @@ def main(argv):
         log.debug('Plotting...')
 
         # print np.min(z[mask]),np.max(z[mask])
-        py.scatter(x,y,100,z,marker='p',vmin=np.min(z[mask]),vmax=np.max(z[mask]))
+        # print [new_x[0],new_x[-1],new_y[0],new_y[-1]]
         # map = py.imshow(Zi,origin='lower',vmin=np.min(z[mask]),vmax=np.max(z[mask]),extent=[new_x[0],new_x[-1],new_y[0],new_y[-1]])
+        py.scatter(x,y,100,z,marker='p',vmin=np.min(z[mask]),vmax=np.max(z[mask]))
         py.xlim(0,9216)
         py.ylim(0,9232)
         py.colorbar()
@@ -107,6 +108,9 @@ def main(argv):
     z = np.sqrt(cat[id_astigy]**2 + cat[id_astigx]**2)
     index = np.argmin(z)
     log.debug('Minimum astigmatism is %f @ %f x %f'%(z[index],x[index],y[index]))
+    x_cm = np.sum((1-z)*x)/z.sum()
+    y_cm = np.sum((1-z)*y)/z.sum()
+    log.debug('Centroid %.2f x %.2f'%(x_cm,y_cm))
     py.subplot(233)
     map()
     # py.show()

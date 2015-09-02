@@ -8,7 +8,7 @@ from astropy.coordinates import Angle
 import logging
 
 logging.basicConfig(format='%(asctime)s[%(levelname)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 log = logging.getLogger(__name__)
 
@@ -37,13 +37,14 @@ def main(argv):
     log.info('Reading input catalog: %s'%opt.filename)
     cat = np.load(opt.filename).T
 
-    pix2mm = 0.01 # pixel size in um
+    pix2mm =  0.1 # pixel size in um
     id_seeing = 2
     id_focus = 5
     id_astigx = 6
     id_astigy = 7
-    id_commax = 8
-    id_commay = 9
+    id_commax = 9
+    id_commay = 8
+    id_spherical = 12
 
     ####################################################################################################################
 
@@ -62,7 +63,7 @@ def main(argv):
             yres = y - fit(x) # residue
             avg = np.mean(yres)
             std = np.std(yres)
-            mask = np.sqrt(yres**2.) < std*1.5
+            mask = np.sqrt(yres**2.) < std
             new_nreject = len(mask)-len(mask[mask])
 
             log.debug('Iter[%i/%i]: Avg = %f Std = %f Reject. %i'%(iter,
@@ -79,26 +80,32 @@ def main(argv):
                 break
             nreject = new_nreject
 
+        print z
+
         return z,mask
 
     ####################################################################################################################
 
     def plot():
 
-        py.plot(x,
-                y,'o',markerfacecolor='w')
         py.plot(x[mask],
                 y[mask],'bo')
+        ylim = py.ylim()
+        xlim = py.xlim()
+        print xlim
+        py.plot(x[np.bitwise_not(mask)],
+                y[np.bitwise_not(mask)],'o',markerfacecolor='w')
 
         py.plot(xx,
                 newFit(xx),'r-')
 
-        ylim = py.ylim()
-        xlim = py.xlim()
+        # ylim = py.ylim()
+
 
         if xlim[0] < root < xlim[1]:
             py.plot([root,root],ylim,'r--')
-            py.ylim(ylim)
+        py.ylim(ylim)
+        py.xlim(xlim)
 
         mean = np.mean(y[mask])
         py.plot(xlim,[mean,mean],
@@ -110,16 +117,16 @@ def main(argv):
 
     ####################################################################################################################
 
-    center = [9216/2,9232/2]
+    center = [4357.01,4808.43] #[9216/2,9232/2]
     xx = (cat[0]-center[0])
     yy = (cat[1]-center[1])
-    pre_mask = np.bitwise_and(np.abs(xx) > 100, np.abs(yy)> 100)
+    pre_mask = xx == xx #np.bitwise_and(np.abs(xx) > 100, np.abs(yy)> 100)
 
     xx = (cat[0][pre_mask]-center[0])
     yy = (cat[1][pre_mask]-center[1])
 
-    x = np.sqrt(xx**2.+yy*2.)*pix2mm #* yy/np.abs(yy)
-    y = cat[id_astigx][pre_mask]
+    x = np.sqrt(xx**2.+yy**2.)*pix2mm #* yy/np.abs(yy)
+    y = np.sqrt(cat[id_astigx][pre_mask]**2. + cat[id_astigy][pre_mask]**2.)
 
     niter = opt.niter if opt.niter > 0 else 1
 
@@ -131,7 +138,7 @@ def main(argv):
     mean = np.mean(y[mask])
     log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
-    log.info('Primary mirror astigmatism in V = %f'%(mean/10.))
+    # log.info('Primary mirror astigmatism in V = %f'%(mean/10.))
     log.info('Angle V = %s degrees'%(V_angle.to_string(unit=u.degree, sep=(':', ':', ':'))))
     log.info('Center X = %.4f mm / %.2f pixels'%(root*1e-3, root/pix2mm))
 
@@ -142,19 +149,25 @@ def main(argv):
 
     plot()
 
+    # py.show()
+    # return
     ####################################################################################################################
 
     # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_astigy][pre_mask]
+    y = y-newFit(x)
+    x = np.arctan2(cat[0],cat[1])
+
+    # y = cat[id_astigy][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
-    U_angle = Angle(z[0]*u.rad)
+
+    U_angle = Angle(z[0]*u.rad*1e-3)
     newFit = np.poly1d(z)
     log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
     mean = np.mean(y[mask])
-    log.info('Primary mirror astigmatism in  U = %f'%(mean/10.))
+    # log.info('Primary mirror astigmatism in  U = %f'%(mean/10.))
     log.info('Angle U = %s degrees'%(U_angle.to_string(unit=u.degree, sep=(':', ':', ':'))))
     log.info('Center Y = %.4f mm / %.2f pixels'%(root*1e-3, root/pix2mm))
 
@@ -164,12 +177,17 @@ def main(argv):
 
     plot()
 
+    # py.show()
+    # return
     ####################################################################################################################
 
     py.subplot(233)
 
-    # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
-    y = cat[id_seeing][pre_mask]
+    xx = (cat[0]-center[0])
+    yy = (cat[1]-center[1])
+
+    x = np.sqrt(xx**2.+yy**2.)*pix2mm #* yy/np.abs(yy)
+    y = cat[id_spherical][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -177,7 +195,8 @@ def main(argv):
     log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
     Seeing = z[1]
-    log.info('Seeing = %.4f arcsec'%(z[1]))
+    # log.info('Seeing = %.4f arcsec'%(z[1]))
+    log.info('Spherical = %.4f '%(z[1]))
     #log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
@@ -188,7 +207,7 @@ def main(argv):
 
     py.subplot(234)
 
-    # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
+    x = cat[0] #np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
     y = cat[id_commax][pre_mask]
 
     z,mask = fit()
@@ -208,7 +227,7 @@ def main(argv):
 
     py.subplot(235)
 
-    # x = np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
+    x = cat[1] # np.sqrt(cat[0]**2. + cat[1]**2.)*pix2mm
     y = cat[id_commay][pre_mask]
 
     z,mask = fit()
@@ -266,15 +285,22 @@ def main(argv):
     xhexapod = ShiftX #+ CFP * np.sin(V_angle.rad)
     yhexapod = ShiftY #+ CFP * np.sin(U_angle.rad)
 
+    zcfp = - CFP * (2. - np.cos(V_angle.rad) - np.cos(U_angle.rad))
+    xcfp = CFP * np.sin(V_angle.rad)
+    ycfp = CFP * np.sin(U_angle.rad)
+
     print('''Hexapod offset:
-    X = %+8.4f um
-    Y = %+8.4f um
-    Z = %+8.4f um
+    X = %+8.4f %+8.4f um
+    Y = %+8.4f %+8.4f um
+    Z = %+8.4f %+8.4f um
     U = %s degrees
     V = %s degrees
     '''%(xhexapod/10,
+         xcfp/10,
          yhexapod/10,
+         ycfp/10,
          zhexapod/10,
+         zcfp/10,
          U_angle.to_string(unit=u.degree, sep=(':', ':', ':')),
          V_angle.to_string(unit=u.degree, sep=(':', ':', ':')))
              )
