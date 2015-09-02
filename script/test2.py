@@ -100,6 +100,10 @@ def main(argv):
             py.plot([root,root],ylim,'r--')
             py.ylim(ylim)
 
+        mean = np.mean(y[mask])
+        py.plot(xlim,[mean,mean],
+                'b--')
+
         py.grid()
 
         return
@@ -124,8 +128,10 @@ def main(argv):
     V_angle = Angle(z[0]*u.rad)
 
     newFit = np.poly1d(z)
+    mean = np.mean(y[mask])
     log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
+    log.info('Primary mirror astigmatism in V = %f'%(mean/10.))
     log.info('Angle V = %s degrees'%(V_angle.to_string(unit=u.degree, sep=(':', ':', ':'))))
     log.info('Center X = %.4f mm / %.2f pixels'%(root*1e-3, root/pix2mm))
 
@@ -147,6 +153,8 @@ def main(argv):
     newFit = np.poly1d(z)
     log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
+    mean = np.mean(y[mask])
+    log.info('Primary mirror astigmatism in  U = %f'%(mean/10.))
     log.info('Angle U = %s degrees'%(U_angle.to_string(unit=u.degree, sep=(':', ':', ':'))))
     log.info('Center Y = %.4f mm / %.2f pixels'%(root*1e-3, root/pix2mm))
 

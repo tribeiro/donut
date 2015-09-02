@@ -84,16 +84,21 @@ def main(argv):
                 zres[index][2:] = zer
             else:
                 log.warning('Source %i to close to the border. Skipping...'%(index))
+                fitted[index] = False
         except AttributeError,e:
             log.exception(e)
+            fitted[index] = False
             pass
         except Exception,e:
             raise
 
+    fitted = np.zeros(len(cat)) == 0
     for i in range(len(cat)):
         log.info('Working on %4i/%4i'%(i+1,len(cat)))
         print 'Working on %4i/%4i'%(i+1,len(cat))
         donutfit(i)
+    # exclude non-fitted sources
+    zres = zres[fitted]
 
     log.info('Writing output to %s '%opt.output)
     np.save(opt.output,zres)
