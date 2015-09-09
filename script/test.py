@@ -29,7 +29,7 @@ piximg = don.extract(img.T)
 #immod_idl = np.loadtxt(os.path.expanduser("~/Develop/donut/code/immod.dat")).reshape(16,16)
 
 # x2,immod = don.fit(impix_idl,0)
-x2,immod,mask = don.fit(piximg.T)
+# x2,immod,mask = don.fit(piximg.T)
 
 z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.163 ,  0.001  ,-0.125 , -0.095 , -0.061 , -0.020 , -0.029 ,  0.184 , -0.084 , -0.009  , 0.079 , -0.001 , -0.015]
 
@@ -40,7 +40,13 @@ z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.1
 # z = np.zeros(len(z))
 # z[0] = 0.8
 # #z[3] = 1.906
-# immod = don.getimage(z)
+z = np.zeros(11)
+z[0] = 1.7
+z[3] = 0.
+immod = don.getimage(z)
+
+hdu = pyfits.PrimaryHDU(data=immod)
+hdu.writeto('/tmp/foo.fits')
 
 py.figure(1)
 #

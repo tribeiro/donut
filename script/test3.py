@@ -8,11 +8,11 @@ from astropy.coordinates import Angle
 
 def main(argv):
 
-    # _path = '/Volumes/TIAGOSD2/Documents/T80/data/20150831'
-    _path = '/home/tiago/Documents/data/T80S/20150831'
+    _path = '/Volumes/TIAGOSD2/Documents/T80/data/20150831'
+    # _path = '/home/tiago/Documents/data/T80S/20150831'
     # files = ['042152_zern.npy','042958_zern.npy']
     # files = ['042958_zern.npy','043232_zern.npy']
-    files = ['042152_zern.npy','043616_zern.npy']
+    files = ['../20150903/065348_zern.npy','../20150907/063427_zern.npy']
     pix2mm = 0.01 # pixel size in um
     id_seeing = 2
     id_focus = 5
@@ -70,20 +70,27 @@ def main(argv):
         std = np.std(z)
         mask = np.abs(z-median) < std*2
         # print median,std
-        fitx = (x[mask]-center[0])*pix2um
-        fity = (y[mask]-center[1])*pix2um
+        fitx = (x[mask]-center[0])*pix2mm
+        fity = (y[mask]-center[1])*pix2mm
         plane = fitPlaneOptimize(np.array([fitx,fity,z[mask]]).T)
-        ix = Angle(plane[0]*u.rad)
-        iy = Angle(plane[1]*u.rad)
+        ix = Angle(plane[0]*u.rad)/10.
+        iy = Angle(plane[1]*u.rad)/10.
 
         print "Inclination X: %s"%ix.to_string(unit=u.degree, sep=(':', ':', ' '))
         print "Inclination Y: %s"%iy.to_string(unit=u.degree, sep=(':', ':', ' '))
-
-        newx = np.linspace(-center[0]*pix2um,center[0]*pix2um,101)
-        newy = np.linspace(-center[1]*pix2um,center[1]*pix2um,101)
+        CFP = 291.36 # Comma Free Point in mm
+        zcfp = - CFP * (2. - np.cos(ix.rad) - np.cos(iy.rad))
+        xcfp = CFP * np.sin(iy.rad)
+        ycfp = CFP * np.sin(ix.rad)
+        print 'Corrections:'
+        print 'X: ',xcfp
+        print 'Y: ',ycfp
+        print 'Z: ',zcfp
+        newx = np.linspace(-center[0]*pix2mm,center[0]*pix2mm,101)
+        newy = np.linspace(-center[1]*pix2mm,center[1]*pix2mm,101)
         XX,YY = np.meshgrid(newx,newy)
         ZZ = plane[0]*XX + plane[1]*YY + plane[2]
-        py.pcolor(XX/pix2um+center[0],YY/pix2um+center[1],ZZ,vmin=zmin,vmax=zmax)
+        py.pcolor(XX/pix2mm+center[0],YY/pix2mm+center[1],ZZ,vmin=zmin,vmax=zmax)
         # py.colorbar()
         py.scatter(x[mask],y[mask],50,z[mask],marker='o',vmin=zmin,vmax=zmax)
         py.xlim(0,9216)
@@ -94,29 +101,29 @@ def main(argv):
 
     def map2(plane1,plane2):
 
-        fitx = (x-center[0])*pix2um
-        fity = (y-center[1])*pix2um
+        fitx = (x-center[0])*pix2mm
+        fity = (y-center[1])*pix2mm
         parabola = fitParabola2DOptimize(np.array([fitx,fity,z]).T)
         # print parabola
-        newx = np.linspace(-center[0]*pix2um,center[0]*pix2um,101)
-        newy = np.linspace(-center[1]*pix2um,center[1]*pix2um,101)
+        newx = np.linspace(-center[0]*pix2mm,center[0]*pix2mm,101)
+        newy = np.linspace(-center[1]*pix2mm,center[1]*pix2mm,101)
         XX,YY = np.meshgrid(newx,newy)
         ZZ = parabola[0]*XX**2.+parabola[2]*XX+parabola[1]*YY**2+parabola[3]*YY+parabola[4]
 
         ZZ1 = plane1[0]*XX + plane1[1]*YY + plane1[2]
         ZZ2 = plane2[0]*XX + plane2[1]*YY + plane2[2]
-        pXX = XX/pix2um+center[0]
-        pYY = YY/pix2um+center[1]
+        pXX = XX/pix2mm+center[0]
+        pYY = YY/pix2mm+center[1]
         # ZZ = np.sqrt(ZZ1**2+ZZ2**2)
         py.pcolor(pXX,pYY,ZZ,vmin=zmin,vmax=zmax)
         minpix = np.unravel_index(ZZ.argmin(),ZZ.shape)
 
-        cx = -parabola[2]/parabola[0]/2/pix2um+center[0]
-        cy = -parabola[3]/parabola[1]/2/pix2um+center[1]
+        cx = -parabola[2]/parabola[0]/2/pix2mm+center[0]
+        cy = -parabola[3]/parabola[1]/2/pix2mm+center[1]
 
         print 'Center @ %fx%f'%(cx,cy)
         print 'Min %.3f @ %fx%f'%(ZZ[minpix[0]][minpix[1]],pXX[minpix[0]][minpix[1]],pYY[minpix[0]][minpix[1]])
-        # py.pcolor(XX/pix2um+center[0],YY/pix2um+center[1],ZZ,vmin=zmin,vmax=zmax)
+        # py.pcolor(XX/pix2mm+center[0],YY/pix2mm+center[1],ZZ,vmin=zmin,vmax=zmax)
         # py.colorbar()
         py.scatter(x,y,50,z,marker='o',vmin=zmin,vmax=zmax)
         py.plot([0,9216],[cy,cy],'k-')
@@ -126,11 +133,11 @@ def main(argv):
         py.colorbar()
 
     zer = np.load(os.path.join(_path,files[0])).T
-    zmin,zmax = -0.5,0.5
+    zer[2:]/=10
+    zmin,zmax = -0.05,0.05
 
 
     center = [9216/2,9232/2]
-    pix2um = 10.
     x = zer[0]
     y = zer[1]
     z = zer[id_astigx]
@@ -148,17 +155,19 @@ def main(argv):
     x = zer[0]
     y = zer[1]
     z = np.sqrt(zer[id_astigy]**2.+zer[id_astigx]**2)
-    zmin,zmax = 0.0,0.6
+    zmin,zmax = 0.0,0.06
 
     py.subplot(233)
     map2(planeU,planeV)
 
     zer = np.load(os.path.join(_path,files[1])).T
-    zmin,zmax = -0.5,0.5
+    #zer[2:]/=10
+    zmin,zmax = -0.05,0.05
 
     x = zer[0]
     y = zer[1]
     z = zer[id_astigx]
+
 
     py.subplot(234)
     planeU = map()
@@ -173,7 +182,7 @@ def main(argv):
     x = zer[0]
     y = zer[1]
     z = np.sqrt(zer[id_astigy]**2.+zer[id_astigx]**2)
-    zmin,zmax = 0.0,0.6
+    zmin,zmax = 0.0,0.06
 
     py.subplot(236)
     map2(planeU,planeV)

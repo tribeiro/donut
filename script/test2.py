@@ -187,7 +187,7 @@ def main(argv):
     yy = (cat[1]-center[1])
 
     x = np.sqrt(xx**2.+yy**2.)*pix2mm #* yy/np.abs(yy)
-    y = cat[id_spherical][pre_mask]
+    y = cat[id_seeing][pre_mask]
 
     z,mask = fit()
     root = -z[1]/z[0]
@@ -195,8 +195,8 @@ def main(argv):
     log.debug('Rejected %i of %i'%(len(mask)-len(mask[mask]),
                                   len(mask)))
     Seeing = z[1]
-    # log.info('Seeing = %.4f arcsec'%(z[1]))
-    log.info('Spherical = %.4f '%(z[1]))
+    log.info('Seeing = %.4f arcsec'%(z[1]))
+    # log.info('Spherical = %.4f '%(z[1]))
     #log.info('Center Y = %.4f mm / %.2f pixels'%(root, root/pix2mm))
 
     xx = np.linspace(x.min()-200*pix2mm,x.max()+200*pix2mm)
