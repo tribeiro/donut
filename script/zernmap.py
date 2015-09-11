@@ -131,6 +131,11 @@ def main(argv):
         nreject = 0
         pos =  (x[mask]-center[0])*pix2mm  if Axis == 0 else (y[mask]-center[1])*pix2mm
 
+        mask = np.bitwise_and(pos > -10. ,
+                              pos <  10.  )
+
+        zero_reject = len(mask)-len(mask[mask])
+        nreject = len(mask)-len(mask[mask])
         for iter in range(niter):
             x1,y1 = pos[mask],z[mask]
 
@@ -139,18 +144,19 @@ def main(argv):
             fit = np.poly1d(pol)
 
             yres = z - fit(pos) # residue
-            avg = np.mean(yres)
-            std = np.std(yres)
-            mask = np.sqrt(yres**2.) < std
+            avg = np.mean(yres[mask])
+            std = np.std(yres[mask])
+            new_mask = np.sqrt((yres-avg)**2.) < std
+            mask = np.bitwise_and(mask,new_mask)
             new_nreject = len(mask)-len(mask[mask])
 
             log.debug('Iter[%i/%i]: Avg = %f Std = %f Reject. %i'%(iter,
                                                                   niter,
                                                                   avg,
                                                                   std,
-                                                                  nreject))
+                                                                  new_nreject))
 
-            if new_nreject > opt.maxreject:
+            if new_nreject-zero_reject > opt.maxreject:
                 log.debug('Maximum reject (%i) reached (%i). Breaking.'%(opt.maxreject,new_nreject))
                 break
             elif new_nreject == nreject:
@@ -178,12 +184,18 @@ def main(argv):
         xx =  (x[mask]-center[0])*pix2mm  if Axis == 0 else (y[mask]-center[1])*pix2mm
         py.plot(xx,
                 newFit(xx),'r-')
+        py.plot(xx,
+                newFit(xx)+np.std(val[mask]),'r:')
+        py.plot(xx,
+                newFit(xx)-np.std(val[mask]),'r:')
 
         # ylim = py.ylim()
 
 
         if xlim[0] < root < xlim[1]:
             py.plot([root,root],ylim,'r--')
+        py.plot(xlim,[newFit(0.),newFit(0.)],'k-')
+        py.plot([0,0],ylim,'k--')
         py.ylim(ylim)
         py.xlim(xlim)
 
