@@ -9,8 +9,13 @@ from astropy.table import Table
 import json
 import logging
 from tempfile import NamedTemporaryFile
+from mpi4py import MPI
 
-logging.basicConfig(format='%(asctime)s[%(levelname)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
+comm = MPI.COMM_WORLD
+root=0
+rs_string ='[rank:%03i/%03i]'%(comm.rank,comm.size)
+
+logging.basicConfig(format='%(asctime)s[%(levelname)s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
                     level=logging.DEBUG,
                     filename=os.path.basename(__file__)+'.log',
                     filemode='w')
@@ -29,6 +34,12 @@ def main(argv):
     parser.add_option('-c','--catalog',
                       help = 'Sextractor catalog with sources position.'
                       ,type='string')
+    parser.add_option('--start',
+                      help = 'Initial index of the catalog to process (default = 0).'
+                      ,type='int',default=0)
+    parser.add_option('--end',
+                      help = 'Last index of the catalog to process (default = -1).'
+                      ,type='int',default=-1)
     parser.add_option('-p','--parameters',
                       help = 'Base donut json parameters. Position will be overwritten.'
                       ,type='string')
@@ -40,7 +51,7 @@ def main(argv):
 
     # Read sextractor catalog
     cat = Table.read(opt.catalog,
-                     format='ascii.sextractor')
+                     format='ascii.sextractor')[opt.start:opt.end]
 
     # Read basic parameters
     with open(opt.parameters) as par_file:
@@ -64,9 +75,6 @@ def main(argv):
     # Read image
     img = fits.getdata(opt.image)
 
-    # Store the results
-    zres = np.zeros((len(cat),basepar['NZER']+2))
-
     def donutfit(index):
         don = Donut()
 
@@ -74,35 +82,66 @@ def main(argv):
         don.init()
 
         piximg = don.extract(img.T)
+        zres = np.zeros(basepar['NZER']+3)
 
         try:
             if piximg.shape == (don.ngrid/2,don.ngrid/2):
                 x2,immod,zer = don.fit(piximg.T)
 
-                zres[index][0] = don.xc
-                zres[index][1] = don.yc
-                zres[index][2:] = zer
+                zres[0] = 1 # True
+                zres[1] = don.xc
+                zres[2] = don.yc
+                zres[3:] = zer
             else:
                 log.warning('Source %i to close to the border. Skipping...'%(index))
-                fitted[index] = False
+                zres[0] = 0 # False
         except AttributeError,e:
             log.exception(e)
-            fitted[index] = False
+            zres[0] = 0 # False
             pass
         except Exception,e:
-            raise
+            zres[0] = 0 # False
+            pass
+
+        return zres
+
+    joblist = []
+
+    if comm.rank == 0:
+
+        nprocs = comm.size
+        njobs_perproc =  len(cat)/nprocs
+        joblist = np.arange(njobs_perproc*nprocs).reshape(nprocs,njobs_perproc)
+
+    proclist = comm.scatter(joblist,root)
+
+    # procres = np.zeros(len(proclist))
+    # Store the results
+    procres = np.zeros((len(proclist),basepar['NZER']+3))
 
     fitted = np.zeros(len(cat)) == 0
-    for i in range(len(cat)):
-        log.info('Working on %4i/%4i'%(i+1,len(cat)))
-        print 'Working on %4i/%4i'%(i+1,len(cat))
-        donutfit(i)
-    # exclude non-fitted sources
-    zres = zres[fitted]
 
-    log.info('Writing output to %s '%opt.output)
-    np.save(opt.output,zres)
+    for i,p in enumerate(proclist):
+        procres[i] = donutfit(p)
 
+    recvbuf=comm.gather(procres,root)
+    if comm.rank==0:
+        log.info('Writing output to %s '%opt.output)
+        zres = np.array(recvbuf)
+        # mask = recvbuf[:,:1].T[0] == 1
+        # zres = recvbuf[:,1:]
+        np.save(opt.output,zres)
+
+    # for i in range(len(cat)):
+    #     log.info('Working on %4i/%4i'%(i+1,len(cat)))
+    #     print 'Working on %4i/%4i'%(i+1,len(cat))
+    #     donutfit(i)
+    # # exclude non-fitted sources
+    sendbuf=""
+    if MPI.COMM_WORLD.rank==0:
+        sendbuf="done"
+    recvbuf=MPI.COMM_WORLD.bcast(sendbuf,root)
+    log.info(recvbuf)
     # print tmpCat.name
 
 if __name__ == '__main__':

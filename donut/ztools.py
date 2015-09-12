@@ -110,14 +110,14 @@ def svd_invert(matrix,threshold):
 
     for i in range(n):
         if ws[i] < ww*threshold:
-            log.info('SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold))
+            # log.info('SVD_INVERT: Value %i=%.2e rejected (threshold=%.2e).'%(i,ws[i],ww*threshold))
             invw[i][i]= 0.
             ncount+=1
         else:
             # print 'WS[%4i] %15.9f'%(i,ws[i])
             invw[i][i] = 1./ws[i]
 
-    log.info('%i singular values rejected in inversion'%ncount)
+    # log.info('%i singular values rejected in inversion'%ncount)
 
     inv_matrix = np.dot(u , np.dot( invw, v))
 
