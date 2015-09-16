@@ -12,11 +12,13 @@ logging.basicConfig(format='%(asctime)s[%(levelname)s]-%(name)s-(%(filename)s:%(
 don = Donut()
 
 # don.readpar(os.path.expanduser('~/Develop/donut/donut/donut.json'))
-don.readpar('/Volumes/TIAGOSD2/Documents/T80/data/hexapod/donut.json')
+# don.readpar('/Volumes/TIAGOSD2/Documents/T80/data/hexapod/donut.json')
+don.readpar('/home/chimera/Documents/data/hexapod/donut.json')
 don.init()
 
 # img = pyfits.getdata(os.path.expanduser('~/Develop/donut/code/focus.fits'))
-img = pyfits.getdata('/Volumes/TIAGOSD2/Documents/T80/data/hexapod/foo_0029.fits')
+# img = pyfits.getdata('/Volumes/TIAGOSD2/Documents/T80/data/hexapod/foo_0029.fits')
+img = pyfits.getdata('/mnt/public/camera/images/20150915/20150916-022056.fits')
 
 piximg = don.extract(img.T)
 
@@ -29,7 +31,7 @@ piximg = don.extract(img.T)
 #immod_idl = np.loadtxt(os.path.expanduser("~/Develop/donut/code/immod.dat")).reshape(16,16)
 
 # x2,immod = don.fit(impix_idl,0)
-# x2,immod,mask = don.fit(piximg.T)
+x2,immod,mask = don.fit(piximg.T)
 
 z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.163 ,  0.001  ,-0.125 , -0.095 , -0.061 , -0.020 , -0.029 ,  0.184 , -0.084 , -0.009  , 0.079 , -0.001 , -0.015]
 
@@ -40,13 +42,13 @@ z = [0.724 , -2.606 , -3.640 ,  1.906 , -0.058 ,  0.243 ,  0.315 , -0.185 , -0.1
 # z = np.zeros(len(z))
 # z[0] = 0.8
 # #z[3] = 1.906
-z = np.zeros(11)
-z[0] = 1.7
-z[3] = 0.
-immod = don.getimage(z)
+# z = np.zeros(11)
+# z[0] = 1.7
+# z[3] = 0.
+# immod = don.getimage(z)
 
-hdu = pyfits.PrimaryHDU(data=immod)
-hdu.writeto('/tmp/foo.fits')
+# hdu = pyfits.PrimaryHDU(data=immod)
+# hdu.writeto('/tmp/foo.fits')
 
 py.figure(1)
 #

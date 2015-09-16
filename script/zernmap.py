@@ -8,6 +8,7 @@ from scipy.optimize import leastsq
 import pylab as py
 from astropy import units as u
 from astropy.coordinates import Angle
+from astropy.io import fits
 import logging
 
 logging.basicConfig(format='%(asctime)s[%(levelname)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
@@ -25,6 +26,9 @@ def main(argv):
     parser.add_option('-f','--filename',
                       help = 'Input file with output from donut (.npy).'
                       ,type='string')
+    parser.add_option('-i','--image',
+                      help = 'Fits file where the zernike coefficients where measured (to read current offsets).'
+                      ,type='string')
     parser.add_option('--niter',
                       help = 'Number of iterations on the linear fitting procedure (default = 1).'
                       ,type='int',default=1)
@@ -38,7 +42,15 @@ def main(argv):
     opt, args = parser.parse_args(argv)
 
     log.info('Reading input catalog: %s'%opt.filename)
-    cat = np.load(opt.filename).T
+    rcat = np.load(opt.filename).T
+
+    cat = np.array([])
+
+    for col in rcat:
+        cat = np.append(cat,np.array([col.reshape(-1),]))
+    cat = cat.reshape(rcat.shape[0],-1)
+    fitmask = cat[0] == 1
+    cat = cat[1:]
 
     niter = opt.niter if opt.niter > 0 else 1
     pix2mm = 0.01 # pixel size in um
@@ -215,6 +227,9 @@ def main(argv):
         mask = np.bitwise_and(z < (mean+3*std),
                               z > (mean-3*std))
 
+        if len(mask[mask]) < 100:
+            mask = np.zeros_like(z) == 0
+
         new_x = np.linspace(x.min(),x.max(),101)
         new_y = np.linspace(y.min(),y.max(),101)
 
@@ -229,7 +244,16 @@ def main(argv):
         fitx = (x[mask]-center[0])*pix2mm
         fity = (y[mask]-center[1])*pix2mm
 
-        plane = fitPlaneOptimize(np.array([fitx,fity,z[mask]]).T)
+        try:
+            plane = fitPlaneOptimize(np.array([fitx,fity,z[mask]]).T)
+            newx = np.linspace(-center[0]*pix2mm,center[0]*pix2mm,101)
+            newy = np.linspace(-center[1]*pix2mm,center[1]*pix2mm,101)
+            XX,YY = np.meshgrid(newx,newy)
+            ZZ = plane[0]*XX + plane[1]*YY + plane[2]
+            py.pcolor(XX,YY,ZZ,vmin=np.min(z[mask]),vmax=np.max(z[mask]))
+
+        except:
+            pass
         # except np.linalg.linalg.LinAlgError,e:
         #     Zi = np.zeros_like(Xi)
         #     log.exception(e)
@@ -242,11 +266,6 @@ def main(argv):
         # print np.min(z[mask]),np.max(z[mask])
         # print [new_x[0],new_x[-1],new_y[0],new_y[-1]]
         # map = py.imshow(Zi,origin='lower',vmin=np.min(z[mask]),vmax=np.max(z[mask]),extent=[new_x[0],new_x[-1],new_y[0],new_y[-1]])
-        newx = np.linspace(-center[0]*pix2mm,center[0]*pix2mm,101)
-        newy = np.linspace(-center[1]*pix2mm,center[1]*pix2mm,101)
-        XX,YY = np.meshgrid(newx,newy)
-        ZZ = plane[0]*XX + plane[1]*YY + plane[2]
-        py.pcolor(XX,YY,ZZ,vmin=np.min(z[mask]),vmax=np.max(z[mask]))
 
         py.scatter(fitx,fity,100,z[mask],marker='p',vmin=np.min(z[mask]),vmax=np.max(z[mask]))
         py.xlim(-center[0]*pix2mm,center[0]*pix2mm)
@@ -325,11 +344,35 @@ def main(argv):
     print '#'*39
     print '# Offset X: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitX(0.)+(planeU['X']+planeV['X'])/2.,-newFitX(0.),(planeU['X']+planeV['X'])/2.)
     print '# Offset Y: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,-newFitY(0.),(planeU['Y']+planeV['Y'])/2.)
-    print '# Offset Z: %+6.4f %s #'%(focus[2],' '*17)
+    print '# Offset Z: %+6.4f %s #'%(focus[2]/10.,' '*17)
     print '# Offset U: %25s #'%(U.to_string(unit=u.degree, sep=(':', ':', ' ')))
     print '# Offset V: %25s #'%(V.to_string(unit=u.degree, sep=(':', ':', ' ')))
-    print '#'*39
 
+
+    if opt.image is not None:
+        print '#'*56
+        hdr = fits.getheader(opt.image)
+        print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['DXHEX'],-newFitX(0.)+(planeU['X']+planeV['X'])/2.,
+                                                              hdr['DXHEX']-newFitX(0.)+(planeU['X']+planeV['X'])/2.,
+                                                              hdr['DXHEX']-newFitX(0.),hdr['DXHEX']+(planeU['X']+planeV['X'])/2.)
+        print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['DYHEX'],-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,
+                                                                     hdr['DYHEX']-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,
+                                                                     hdr['DYHEX']-newFitY(0.),hdr['DYHEX']+(planeU['Y']+planeV['Y'])/2.)
+        print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(hdr['DZHEX'],focus[2]/10.,hdr['DZHEX']+(focus[2]/10.),' '*17)
+
+        du = Angle(hdr['DUHEX']*u.degree)
+        dv = Angle(hdr['DVHEX']*u.degree)
+        corrU = du+U
+        corrV = dv+V
+        print '# Offset U: %s%s = %s    #'%(du.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                          U.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                          corrU.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True))
+        print '# Offset V: %s%s = %s    #'%(dv.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                          V.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                          corrV.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True))
+        print '#'*56
+    else:
+        print '#'*39
     # log.debug('Mapping focus.')
     # z = cat[id_focus]
     # py.subplot(236)
