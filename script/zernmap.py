@@ -281,18 +281,18 @@ def main(argv):
 
     py.subplot(231)
 
-    zmin,zmax = -0.05,0.05
+    zmin,zmax = -0.1,0.1
 
 
     center = [9216/2,9232/2]
     x = cat[0]
     y = cat[1]
-    z = cat[id_astigx]
+    z = cat[id_astigx]*0.55
 
     py.subplot(231)
     planeU = astigmatism(0)
 
-    z = cat[id_astigy]
+    z = cat[id_astigy]*0.55
 
     py.subplot(232)
     planeV = astigmatism(1)
@@ -315,7 +315,7 @@ def main(argv):
     log.debug('Mapping comma in X.')
     x = cat[0]
     y = cat[1]
-    z = cat[id_commax]
+    z = cat[id_commax]*0.55
 
     py.subplot(234)
     cmaX,mask = comma(0)
@@ -325,7 +325,7 @@ def main(argv):
     plot(mask,0)
 
     log.debug('Mapping comma in Y.')
-    z = cat[id_commay]
+    z = cat[id_commay]*0.55
     py.subplot(235)
     cmaY,mask = comma(1)
     root = -cmaY[1]/cmaY[0]
@@ -334,7 +334,7 @@ def main(argv):
     plot(mask,1)
 
     log.debug('Mapping focus.')
-    z = cat[id_focus]
+    z = cat[id_focus]*0.55
     py.subplot(236)
     focus = map()
 

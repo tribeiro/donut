@@ -16,7 +16,7 @@ Translation to python Jun, 2015
 class Donut():
 
     seeingMin = 0.2
-    seeingMax = 3.0
+    seeingMax = 6.0
 
     #def __init__(self):
     #    pass
