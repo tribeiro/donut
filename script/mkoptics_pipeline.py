@@ -5,10 +5,15 @@ Pipeline for determining hexapod corrections.
 '''
 
 import sys,os
+import numpy as np
 from chimera.util.sextractor import SExtractor
 import logging
 import subprocess
-import zernmap
+from astropy import units
+from astropy.coordinates import Angle
+from astropy.io import fits
+from donut.zernmap import ZernMap
+# import zernmap
 
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s[%(levelname)s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
@@ -52,25 +57,25 @@ def main(argv):
                                      "FLUX_BEST", "FWHM_IMAGE",
                                      "FLAGS"]
 
-    # ok, here we go!
-
-    log.info('Running sextractor')
-    sex.run(opt.image, clean=False)
-
-    if opt.display:
-        log.info('Displaying image in ds9')
-
-    # Now calculate zernike coef
-
     outname = os.path.basename(opt.image).split('-')[1].replace('.fits','_zern.npy')
 
-    cmd = 'mpirun -np %i python ~/Develop/donut/script/donut -i %s -p %s -c %s -o %s'%(opt.mpithreads,
-                                                                opt.image,
-                                                                opt.parameters,
-                                                                sex.config['CATALOG_NAME'],
-                                                                outname)
+    # ok, here we go!
+    if ( (not os.path.exists(outname)) or (opt.overwrite) ):
 
-    if not os.path.exists(outname) and not opt.overwrite:
+        log.info('Running sextractor')
+        sex.run(opt.image, clean=False)
+
+        if opt.display:
+            log.info('Displaying image in ds9')
+
+        # Now calculate zernike coef
+
+        cmd = 'mpirun -np %i python ~/Develop/donut/script/donut -i %s -p %s -c %s -o %s'%(opt.mpithreads,
+                                                                    opt.image,
+                                                                    opt.parameters,
+                                                                    sex.config['CATALOG_NAME'],
+                                                                    outname)
+
         log.info('Running donut with %i cores'%opt.mpithreads)
         log.debug(cmd)
         p = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -80,9 +85,76 @@ def main(argv):
 
     log.info('Mapping hexapod position')
 
-    zerpar = [os.path.basename(__file__),'-f',outname,'--max', '100', '--niter', '3','-i',opt.image]
+    # zerpar = [os.path.basename(__file__),'-f',outname,'--max', '100', '--niter', '3','-i',opt.image]
+    #
+    # zernmap.main(zerpar)
 
-    zernmap.main(zerpar)
+    zmap = ZernMap(cfp = 291.36*units.mm,
+                   pix2mm = 9*units.micron,
+                   center = [0,0])
+
+    rcat = np.load(outname).T
+
+    cat = np.array([])
+
+    for col in rcat:
+        cat = np.append(cat,np.array([col.reshape(-1),]))
+    cat = cat.reshape(rcat.shape[0],-1)
+
+    fitmask = cat[0] == 1
+    cat = cat[1:]
+
+    id_seeing = 2
+    id_focus = 5
+    id_astigx = 6
+    id_astigy = 7
+    id_commay = 8
+    id_commax = 9
+
+    center = [9216/2,9232/2]
+
+    planeU = zmap.astigmatism(cat[0],cat[1],cat[id_astigx]*sex.config['PIXEL_SCALE'],0)
+    planeV = zmap.astigmatism(cat[0],cat[1],cat[id_astigy]*sex.config['PIXEL_SCALE'],1)
+    comaX,mask = zmap.comma(cat[0],cat[id_commax]*sex.config['PIXEL_SCALE'])
+    comaY,mask = zmap.comma(cat[1],cat[id_commay]*sex.config['PIXEL_SCALE'])
+    focus = zmap.map(cat[0],cat[1],cat[id_focus]*sex.config['PIXEL_SCALE'])
+    seeing = zmap.map(cat[0],cat[1],cat[id_seeing]*sex.config['PIXEL_SCALE'])
+
+    U = (planeU['U']+planeV['U'])/2.
+    V = (planeU['V']+planeV['V'])/2.
+    newFitX = np.poly1d(comaX)
+    newFitY = np.poly1d(comaY)
+
+    print '#'*39
+
+    print '# Offset X: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,-newFitX(0.),(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
+    print '# Offset Y: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,-newFitY(0.),(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
+    print '# Offset Z: %+6.4f %s #'%(focus[2]/10.,' '*17)
+    print '# Offset U: %25s #'%(U.to_string(unit=units.degree, sep=(':', ':', ' ')))
+    print '# Offset V: %25s #'%(V.to_string(unit=units.degree, sep=(':', ':', ' ')))
+
+
+    print '#'*56
+    hdr = fits.getheader(opt.image)
+    print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['DXHEX'],-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
+                                                          hdr['DXHEX']-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
+                                                          hdr['DXHEX']-newFitX(0.),hdr['DXHEX']+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
+    print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['DYHEX'],-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
+                                                                 hdr['DYHEX']-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
+                                                                 hdr['DYHEX']-newFitY(0.),hdr['DYHEX']+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
+    print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(hdr['DZHEX'],focus[2]/10.,hdr['DZHEX']+(focus[2]/10.),' '*17)
+
+    du = Angle(hdr['DUHEX']*units.degree)
+    dv = Angle(hdr['DVHEX']*units.degree)
+    corrU = du+U
+    corrV = dv+V
+    print '# Offset U: %s%s = %s    #'%(du.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                      U.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                      corrU.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True))
+    print '# Offset V: %s%s = %s    #'%(dv.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                      V.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True),
+                                      corrV.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True))
+    print '#'*56
 
     return 0
 

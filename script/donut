@@ -9,11 +9,6 @@ from astropy.table import Table
 import json
 import logging
 from tempfile import NamedTemporaryFile
-from mpi4py import MPI
-
-comm = MPI.COMM_WORLD
-root=0
-rs_string ='[rank:%03i/%03i]'%(comm.rank,comm.size)
 
 logging.basicConfig(format='%(asctime)s[%(levelname)s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
                     level=logging.DEBUG,
@@ -21,6 +16,21 @@ logging.basicConfig(format='%(asctime)s[%(levelname)s:%(threadName)s]-%(name)s-(
                     filemode='w')
 
 log = logging.getLogger(__name__)
+
+try:
+    from mpi4py import MPI
+except ImportError,e:
+    log.warning('Could not import mpi4py. Running on single thread mode.')
+    comm = None
+    root = None
+    rs_string = ''
+    pass
+else:
+    comm = MPI.COMM_WORLD
+    root=0
+    rs_string ='[rank:%03i/%03i]'%(comm.rank,comm.size)
+
+__version__ = '0.0.1 (2015-25-09)'
 
 def main(argv):
 
@@ -46,9 +56,15 @@ def main(argv):
     parser.add_option('-o','--output',
                       help = 'Output file name.'
                       ,type='string')
+    parser.add_option('-v','--version',
+                      help = 'Show program version.'
+                      ,action='store_true',default=False)
 
     opt, args = parser.parse_args(argv)
 
+    if opt.version:
+        print '\t Donut \t version: %s'%(__version__)
+        return
     # Read sextractor catalog
     cat = Table.read(opt.catalog,
                      format='ascii.sextractor')[opt.start:opt.end]
