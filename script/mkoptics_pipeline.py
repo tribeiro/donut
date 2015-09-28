@@ -15,6 +15,8 @@ from astropy.io import fits
 from donut.zernmap import ZernMap
 # import zernmap
 
+__version__ = '0.1.0 (2015-27-09)'
+
 log = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s[%(levelname)s:%(threadName)s]-%(name)s-(%(filename)s:%(lineno)d):: %(message)s',
                     level=logging.DEBUG)
@@ -91,7 +93,7 @@ def main(argv):
 
     zmap = ZernMap(cfp = 291.36*units.mm,
                    pix2mm = 9*units.micron,
-                   center = [0,0])
+                   center = [9216/2,9232/2])
 
     rcat = np.load(outname).T
 
@@ -111,12 +113,10 @@ def main(argv):
     id_commay = 8
     id_commax = 9
 
-    center = [9216/2,9232/2]
-
     planeU = zmap.astigmatism(cat[0],cat[1],cat[id_astigx]*sex.config['PIXEL_SCALE'],0)
     planeV = zmap.astigmatism(cat[0],cat[1],cat[id_astigy]*sex.config['PIXEL_SCALE'],1)
-    comaX,mask = zmap.comma(cat[0],cat[id_commax]*sex.config['PIXEL_SCALE'])
-    comaY,mask = zmap.comma(cat[1],cat[id_commay]*sex.config['PIXEL_SCALE'])
+    comaX,mask = zmap.comma(cat[0],cat[id_commax]*sex.config['PIXEL_SCALE'],0)
+    comaY,mask = zmap.comma(cat[1],cat[id_commay]*sex.config['PIXEL_SCALE'],1)
     focus = zmap.map(cat[0],cat[1],cat[id_focus]*sex.config['PIXEL_SCALE'])
     seeing = zmap.map(cat[0],cat[1],cat[id_seeing]*sex.config['PIXEL_SCALE'])
 

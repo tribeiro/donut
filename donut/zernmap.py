@@ -28,6 +28,15 @@ def fitPlaneOptimize(XYZ):
 
     return result
 
+def mkMask(data,size,nx=3,ny=3):
+
+    grid = np.zeros((nx,ny))
+
+    xgrid = np.arange(size[0])
+    ygrid = np.arange(size[1])
+
+    return
+
 class ZernMap:
 
     @units.quantity_input(cfp=units.meter,pix2mm=units.meter)
@@ -83,11 +92,11 @@ class ZernMap:
 
         return res
 
-    def comma(self,x,y,xrange=10.,niter=3):
+    def comma(self,x,y,Axis,xrange=10.,niter=3):
 
         mask = np.zeros_like(x) == 0
 
-        pos =  (x[mask]-self.center[0])*self.pix2mm.to(units.mm).value
+        pos =  (x[mask]-self.center[Axis])*self.pix2mm.to(units.mm).value
 
         mask = np.bitwise_and(pos > -xrange ,
                               pos <  xrange  )
@@ -117,7 +126,7 @@ class ZernMap:
                                                                   new_nreject))
 
             if new_nreject-zero_reject > self.maxreject:
-                log.debug('Maximum reject (%i) reached (%i). Breaking.'%(opt.maxreject,new_nreject))
+                log.debug('Maximum reject (%i) reached (%i). Breaking.'%(self.maxreject,new_nreject))
                 break
             elif new_nreject == nreject:
                 log.debug('Rejected 0 data points. Breaking')
