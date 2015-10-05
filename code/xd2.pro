@@ -114,6 +114,13 @@ common paredit, whichpar, parfile
       savez, zres, donpar.static
    end
   'Save image': begin
+     print,n_elements(impix)
+     openw,lun,'impix.dat',/get_lun
+     printf,lun,impix,format="(256A)"
+     Free_lun, lun
+     openw,lun,'immod.dat',/get_lun
+     printf,lun,immod,format="(256A)"
+     Free_lun, lun
      tmp = fltarr(512,256)
      tmp(0:255,*) = congrid(impix, 256,256)
      tmp(256:511,*) = congrid(immod, 256,256 )

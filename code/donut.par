@@ -1,18 +1,18 @@
 {donpar, 
-D:       3.93400,      ;  telescope diameter, m
-EPS:      0.420000,    ; relative central obscuration
+D:       0.82   ,      ;  telescope diameter, m
+EPS:      0.322000,    ; relative central obscuration
 LAMBDA:      0.800000, ; imaging wavelength, micron (usually non-critical)
-PIXEL:      0.270000,  ; pixel size, arcseconds
+PIXEL:      0.548000,  ; pixel size, arcseconds
 NGRID:       64,       ; half-size of computing grid, 64 recommended
 RON:       10.0000,    ; readout noise, el, unused
 EADU:       2.00000,   ; elentrons per ADU, unused
 THRESH:     0.0500000, ; relative threshold for fitted intensities 
-NZER:       21,        ; number of fitter Zernike terms
+NZER:       30,        ; number of fitter Zernike terms
 DATADIR: './',         ; directory where data files are
 STATIC: '',            ; static aberrations file, '' if none
 RESULT: 'donut.dat',   ; file to save results
 PARFILE: 'donut.par',  ; this file, updated when edited
-IMFILE: 'focus.fits',  ; data file
-XC:      466,          ; x-center of the donut, pixes
-YC:     372,           ; y-center of the donut, pixes
-EFOC:        1}        ; +1 if intra-focal, -1 otherwise
+IMFILE: 'foo_0029.FIT',; data file
+XC:      2173  ,       ; x-center of the donut, pixes
+YC:      1352  ,       ; y-center of the donut, pixes
+EFOC:        -1}        ; +1 if intra-focal, -1 otherwise

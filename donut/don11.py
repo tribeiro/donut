@@ -17,6 +17,16 @@ class Donut():
 
     seeingMin = 0.2
     seeingMax = 3.0
+    ngrid = 64
+    d = 0.8
+    eps = 0.4
+    alambda = 0.8
+    pixel = 0.55
+    thresj = 0.05
+    nzer = 21
+    xc = 0
+    yc = 0
+    efoc = 1
 
     #def __init__(self):
     #    pass
