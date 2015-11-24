@@ -136,16 +136,21 @@ def main(argv):
 
     print '#'*56
     hdr = fits.getheader(opt.image)
-    print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['DXHEX'],-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
-                                                          hdr['DXHEX']-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
-                                                          hdr['DXHEX']-newFitX(0.),hdr['DXHEX']+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
-    print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['DYHEX'],-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
-                                                                 hdr['DYHEX']-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
-                                                                 hdr['DYHEX']-newFitY(0.),hdr['DYHEX']+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
-    print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(hdr['DZHEX'],focus[2]/10.,hdr['DZHEX']+(focus[2]/10.),' '*17)
+    DXHEX = 'HIERARCH T80S TEL FOCU HEX DX'
+    DYHEX = 'HIERARCH T80S TEL FOCU HEX DY'
+    DZHEX = 'HIERARCH T80S TEL FOCU HEX DZ'
+    DUHEX = 'HIERARCH T80S TEL FOCU HEX DU'
+    DVHEX = 'HIERARCH T80S TEL FOCU HEX DV'
+    print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr[DXHEX]),-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
+                                                          float(hdr[DXHEX])-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
+                                                          float(hdr[DXHEX])-newFitX(0.),float(hdr[DXHEX])+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
+    print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr[DYHEX]),-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
+                                                                 float(hdr[DYHEX])-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
+                                                                 float(hdr[DYHEX])-newFitY(0.),float(hdr[DYHEX])+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
+    print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(float(hdr[DZHEX]),focus[2]/10.,float(hdr[DZHEX])+(focus[2]/10.),' '*17)
 
-    du = Angle(hdr['DUHEX']*units.degree)
-    dv = Angle(hdr['DVHEX']*units.degree)
+    du = Angle(float(hdr[DUHEX])*units.degree)
+    dv = Angle(float(hdr[DVHEX])*units.degree)
     corrU = du+U
     corrV = dv+V
     print '# Offset U: %s%s = %s    #'%(du.to_string(unit=units.degree, sep=':',precision=2,alwayssign=True,pad=True),
