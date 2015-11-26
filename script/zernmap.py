@@ -347,7 +347,7 @@ def main(argv):
     V = (planeU['V']+planeV['V'])/2.
 
     print '#'*39
-    print '# Offset X: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitX(0.)+(planeU['X']+planeV['X'])/2.,-newFitX(0.),(planeU['X']+planeV['X'])/2.)
+    print '# Offset X: %+6.4f (%+6.4f/%+6.4f) #'%(newFitX(0.)+(planeU['X']+planeV['X'])/2.,newFitX(0.),(planeU['X']+planeV['X'])/2.)
     print '# Offset Y: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,-newFitY(0.),(planeU['Y']+planeV['Y'])/2.)
     print '# Offset Z: %+6.4f %s #'%(focus[2]/10.,' '*17)
     print '# Offset U: %25s #'%(U.to_string(unit=u.degree, sep=(':', ':', ' ')))
@@ -357,16 +357,16 @@ def main(argv):
     if opt.image is not None:
         print '#'*56
         hdr = fits.getheader(opt.image)
-        print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['HIERARCH T80S TEL FOCU HEX DX'],-newFitX(0.)+(planeU['X']+planeV['X'])/2.,
-                                                              hdr['HIERARCH T80S TEL FOCU HEX DX']-newFitX(0.)+(planeU['X']+planeV['X'])/2.,
-                                                              hdr['HIERARCH T80S TEL FOCU HEX DX']-newFitX(0.),hdr['HIERARCH T80S TEL FOCU HEX DX']+(planeU['X']+planeV['X'])/2.)
-        print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(hdr['HIERARCH T80S TEL FOCU HEX DY'],-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,
-                                                                     hdr['HIERARCH T80S TEL FOCU HEX DY']-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,
-                                                                     hdr['HIERARCH T80S TEL FOCU HEX DY']-newFitY(0.),hdr['HIERARCH T80S TEL FOCU HEX DY']+(planeU['Y']+planeV['Y'])/2.)
-        print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(hdr['HIERARCH T80S TEL FOCU HEX DZ'],focus[2]/10.,hdr['HIERARCH T80S TEL FOCU HEX DZ']+(focus[2]/10.),' '*17)
+        print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr['HIERARCH T80S TEL FOCU HEX DX']),newFitX(0.)+(planeU['X']+planeV['X'])/2.,
+                                                              float(hdr['HIERARCH T80S TEL FOCU HEX DX'])+newFitX(0.)+(planeU['X']+planeV['X'])/2.,
+                                                              float(hdr['HIERARCH T80S TEL FOCU HEX DX'])+newFitX(0.),float(hdr['HIERARCH T80S TEL FOCU HEX DX'])+(planeU['X']+planeV['X'])/2.)
+        print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr['HIERARCH T80S TEL FOCU HEX DY']),-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,
+                                                                     float(hdr['HIERARCH T80S TEL FOCU HEX DY'])-newFitY(0.)+(planeU['Y']+planeV['Y'])/2.,
+                                                                     float(hdr['HIERARCH T80S TEL FOCU HEX DY'])-newFitY(0.),float(hdr['HIERARCH T80S TEL FOCU HEX DY'])+(planeU['Y']+planeV['Y'])/2.)
+        print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(float(hdr['HIERARCH T80S TEL FOCU HEX DZ']),focus[2]/10.,float(hdr['HIERARCH T80S TEL FOCU HEX DZ'])+(focus[2]/10.),' '*17)
 
-        du = Angle(hdr['HIERARCH T80S TEL FOCU HEX DU']*u.degree)
-        dv = Angle(hdr['HIERARCH T80S TEL FOCU HEX DV']*u.degree)
+        du = Angle(float(hdr['HIERARCH T80S TEL FOCU HEX DU'])*u.degree)
+        dv = Angle(float(hdr['HIERARCH T80S TEL FOCU HEX DV'])*u.degree)
         corrU = du+U
         corrV = dv+V
         print '# Offset U: %s%s = %s    #'%(du.to_string(unit=u.degree, sep=':',precision=2,alwayssign=True,pad=True),
