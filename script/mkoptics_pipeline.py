@@ -91,7 +91,7 @@ def main(argv):
 
     zmap = ZernMap(cfp = 291.36*units.mm,
                    pix2mm = 9*units.micron,
-                   center = [0,0])
+                   center = [9216/2,9232/2]) #[0,0])
 
     rcat = np.load(outname).T
 
