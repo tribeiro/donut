@@ -117,7 +117,7 @@ class ZernMap:
                                                                   new_nreject))
 
             if new_nreject-zero_reject > self.maxreject:
-                log.debug('Maximum reject (%i) reached (%i). Breaking.'%(opt.maxreject,new_nreject))
+                log.debug('Maximum reject (%i) reached (%i). Breaking.'%(self.maxreject,new_nreject))
                 break
             elif new_nreject == nreject:
                 log.debug('Rejected 0 data points. Breaking')

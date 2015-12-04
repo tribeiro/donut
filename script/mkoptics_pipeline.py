@@ -115,6 +115,7 @@ def main(argv):
 
     planeU = zmap.astigmatism(cat[0],cat[1],cat[id_astigx]*sex.config['PIXEL_SCALE'],0)
     planeV = zmap.astigmatism(cat[0],cat[1],cat[id_astigy]*sex.config['PIXEL_SCALE'],1)
+    # print cat[id_commax]
     comaX,mask = zmap.comma(cat[0],cat[id_commax]*sex.config['PIXEL_SCALE'])
     comaY,mask = zmap.comma(cat[1],cat[id_commay]*sex.config['PIXEL_SCALE'])
     focus = zmap.map(cat[0],cat[1],cat[id_focus]*sex.config['PIXEL_SCALE'])
@@ -124,11 +125,13 @@ def main(argv):
     V = (planeU['V']+planeV['V'])/2.
     newFitX = np.poly1d(comaX)
     newFitY = np.poly1d(comaY)
+    signX = +1
+    signY = -1
 
     print '#'*39
 
-    print '# Offset X: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,-newFitX(0.),(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
-    print '# Offset Y: %+6.4f (%+6.4f/%+6.4f) #'%(-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,-newFitY(0.),(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
+    print '# Offset X: %+6.4f (%+6.4f/%+6.4f) #'%(signX*newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,signX*newFitX(0.),(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
+    print '# Offset Y: %+6.4f (%+6.4f/%+6.4f) #'%(signY*newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,signY*newFitY(0.),(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
     print '# Offset Z: %+6.4f %s #'%(focus[2]/10.,' '*17)
     print '# Offset U: %25s #'%(U.to_string(unit=units.degree, sep=(':', ':', ' ')))
     print '# Offset V: %25s #'%(V.to_string(unit=units.degree, sep=(':', ':', ' ')))
@@ -141,12 +144,12 @@ def main(argv):
     DZHEX = 'HIERARCH T80S TEL FOCU HEX DZ'
     DUHEX = 'HIERARCH T80S TEL FOCU HEX DU'
     DVHEX = 'HIERARCH T80S TEL FOCU HEX DV'
-    print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr[DXHEX]),-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
-                                                          float(hdr[DXHEX])-newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
-                                                          float(hdr[DXHEX])-newFitX(0.),float(hdr[DXHEX])+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
-    print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr[DYHEX]),-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
-                                                                 float(hdr[DYHEX])-newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
-                                                                 float(hdr[DYHEX])-newFitY(0.),float(hdr[DYHEX])+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
+    print '# Offset X: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr[DXHEX]),signX*newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
+                                                          float(hdr[DXHEX])+signX*newFitX(0.)+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.,
+                                                          float(hdr[DXHEX])+signX*newFitX(0.),float(hdr[DXHEX])+(planeU['X'].to(units.mm).value+planeV['X'].to(units.mm).value)/2.)
+    print '# Offset Y: %+6.4f%+6.4f = %+6.4f (%+6.4f/%+6.4f) #'%(float(hdr[DYHEX]),signY*newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
+                                                                 float(hdr[DYHEX])+signY*newFitY(0.)+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.,
+                                                                 float(hdr[DYHEX])+signY*newFitY(0.),float(hdr[DYHEX])+(planeU['Y'].to(units.mm).value+planeV['Y'].to(units.mm).value)/2.)
     print '# Offset Z: %+6.4f%+6.4f = %+6.4f %s #'%(float(hdr[DZHEX]),focus[2]/10.,float(hdr[DZHEX])+(focus[2]/10.),' '*17)
 
     du = Angle(float(hdr[DUHEX])*units.degree)
