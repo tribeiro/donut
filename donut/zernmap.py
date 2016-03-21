@@ -83,38 +83,43 @@ class ZernMap:
 
         return res
 
-    def comma(self,x,y,xrange=10.,niter=3):
+    def comma(self,x,y,axis,xrange=10.,niter=3,x2=None):
 
-        mask = np.zeros_like(x) == 0
+        mask = np.zeros_like(x[0]) == 0
 
-        pos =  (x[mask]-self.center[0])*self.pix2mm.to(units.mm).value
+        # log.debug('%s' % x.shape.__str__())
+        pos =  [(x[0][mask]-self.center[0])*self.pix2mm.to(units.mm).value,
+                (x[1][mask]-self.center[1])*self.pix2mm.to(units.mm).value]
 
-        mask = np.bitwise_and(pos > -xrange ,
-                              pos <  xrange  )
+        mask = np.bitwise_and(np.bitwise_and(pos[0] > -xrange ,
+                                             pos[0] <  xrange  ),
+                              np.bitwise_and(pos[1] > -xrange ,
+                                             pos[1] <  xrange  ))
 
         zero_reject = len(mask)-len(mask[mask])
         nreject = len(mask)-len(mask[mask])
 
         pol = None
         for iter in range(niter if niter > 0 else 1):
-            x1,y1 = pos[mask],y[mask]
+            x1,y1 = pos[axis][mask],y[mask]
 
             pol = np.polyfit(x1,y1,1)
 
             fit = np.poly1d(pol)
 
-            yres = y - fit(pos) # residue
+            yres = y - fit(pos[axis]) # residue
             avg = np.mean(yres[mask])
             std = np.std(yres[mask])
-            new_mask = np.sqrt((yres-avg)**2.) < std
+            new_mask = np.sqrt((yres-avg)**2.) < std*1.5
             mask = np.bitwise_and(mask,new_mask)
             new_nreject = len(mask)-len(mask[mask])
 
-            log.debug('Iter[%i/%i]: Avg = %f Std = %f Reject. %i'%(iter,
-                                                                  niter,
-                                                                  avg,
-                                                                  std,
-                                                                  new_nreject))
+            log.debug('Iter[%i/%i]: Avg = %f Std = %f Used = %i. Rejected %i'%(iter,
+                                                                              niter,
+                                                                              avg,
+                                                                              std,
+                                                                              len(mask[mask]),
+                                                                              new_nreject))
 
             if new_nreject-zero_reject > self.maxreject:
                 log.debug('Maximum reject (%i) reached (%i). Breaking.'%(self.maxreject,new_nreject))

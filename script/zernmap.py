@@ -246,6 +246,11 @@ def main(argv):
 
         try:
             plane = fitPlaneOptimize(np.array([fitx,fity,z[mask]]).T)
+            _x = [-50,50,0,50,-50]
+            _y = [-50,-50,0,50,50]
+            for i in range(len(_x)):
+                print  plane[0]*_x[i] + plane[1]*_y[i] + plane[2]
+
             newx = np.linspace(-center[0]*pix2mm,center[0]*pix2mm,101)
             newy = np.linspace(-center[1]*pix2mm,center[1]*pix2mm,101)
             XX,YY = np.meshgrid(newx,newy)
