@@ -1,12 +1,17 @@
 
 import numpy as np
-import pylab as py
 import json
 import ztools
 import logging
 
 log = logging.getLogger(__name__)
 
+try:
+    import pylab as py
+except:
+    py = None
+    log.warning('No plotting...')
+    
 '''
 Measuring low-order aberrations from defocused images
 May 3, 2006
