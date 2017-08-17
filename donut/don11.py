@@ -483,11 +483,11 @@ class Donut():
         ix = np.array(np.floor(ix),dtype=np.int)+ nx/2
         iy = np.array(np.floor(iy),dtype=np.int)+ ny/2
 
-        ix1 = np.max([ix-nccd/2 ,0])
-        ix2 = np.min([ix1+nccd, nx])
+        ix1 = int(np.max([ix-nccd/2 ,0]))
+        ix2 = int(np.min([ix1+nccd, nx]))
 
-        iy1 = np.max([iy-nccd/2 ,0])
-        iy2 = np.min([iy1+nccd , ny])
+        iy1 = int(np.max([iy-nccd/2 ,0]))
+        iy2 = int(np.min([iy1+nccd , ny]))
 
         if (ix2-ix1 < nccd-1) or (iy2-iy1 < nccd-1):
             log.error('Image is cut on one side!')
