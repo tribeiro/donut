@@ -11,7 +11,7 @@ try:
 except:
     py = None
     log.warning('No plotting...')
-    
+
 '''
 Measuring low-order aberrations from defocused images
 May 3, 2006
@@ -456,10 +456,10 @@ class Donut():
         yc = self.yc
         nccd = self.fovpix
 
-        ix1 = np.max([xc-nccd,0])
-        ix2 = np.min([xc+nccd, len(img)-1])
-        iy1 = np.max([yc-nccd,0])
-        iy2 = np.min([yc+nccd, len(img)-1])
+        ix1 = int(np.max([xc-nccd,0]))
+        ix2 = int(np.min([xc+nccd, len(img)-1]))
+        iy1 = int(np.max([yc-nccd,0]))
+        iy2 = int(np.min([yc+nccd, len(img)-1]))
 
         img1 = img[ix1:ix2,iy1:iy2] # cut out the required part
 

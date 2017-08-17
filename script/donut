@@ -2,7 +2,6 @@
 
 import os,sys
 import numpy as np
-import pylab as py
 from donut.don11 import Donut
 from astropy.io import fits
 from astropy.table import Table
