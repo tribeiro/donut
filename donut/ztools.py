@@ -277,6 +277,7 @@ def dist(size):
    """
 
    (rows, columns) = size if isinstance(size, (list, tuple)) else (size, size)
+   rows, columns = int(rows), int(columns)
 
    x = np.arange(columns, dtype=np.float32)
    x = np.where(x < (columns-x), x**2, (columns-x)**2)
