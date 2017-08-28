@@ -209,7 +209,7 @@ class Donut():
         :param impix1:
         :return: Vector of Zernike aberrations in microns
         '''
-        n = self.ngrid/self.npixperpix
+        n = int(self.ngrid/self.npixperpix)
 
         xx = np.array([np.arange(n*2)-n]*(2*n))   #replicate(1,2*n)
         yy = np.array([np.arange(n*2)-n]*(2*n)).T #replicate(1,2*n)
